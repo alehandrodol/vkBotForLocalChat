@@ -1,0 +1,209 @@
+import vk_api
+from vk_api.bot_longpoll import VkBotLongPoll, VkBotEventType, VkBotMessageEvent
+from vk_api.utils import get_random_id
+
+from random import choice, randint
+
+from core.Base import Base
+from core.database import engine, get_db
+
+from models import Group, User
+
+from sqlalchemy.orm import Session
+from datetime import datetime
+
+from typing import Union
+
+
+class Bot:
+    def __init__(self):
+        # Tables creation
+        Base.metadata.create_all(bind=engine)
+
+        # Auth
+        self.vk_session = vk_api.VkApi(
+            token='e870b89da7be761fae34bcbd531d1530941bcc0e85feb26a15f65f09ded05dbb77eded17d0b58963c34e3')
+        self.vk = self.vk_session.get_api()
+        self.params = self.vk.groups.getLongPollServer(group_id=209871225)
+
+    @staticmethod
+    def commit(db: Session, inst: Union[Group, User]):
+        db.add(inst)
+        db.commit()
+        db.refresh(inst)
+
+    def get_random_user(self, users):
+        # Choosing random user from list
+        num = randint(0, len(users['items'])-1)
+        user_id = users['items'][num]['member_id']
+        while user_id < 0:
+            num = randint(0, len(users['items']) - 1)
+            user_id = users['items'][num]['member_id']
+
+        users['items'].pop(num)
+        # Getting more info about user
+        user = self.vk.users.get(user_ids=user_id)
+        return users, user[0]
+
+    def make_empty_record_in_groups(self, event, db: Session):
+        chat_name = self.vk.messages.getConversationsById(
+            peer_ids=event.message['peer_id'])['items'][0]['chat_settings']['title']
+        record_group = Group(
+            id=event.chat_id,
+            name=chat_name,
+            today_pdr=None,
+            who_is_fucked=None,
+            year_pdr=None,
+            year_pdr_num=datetime.today().year
+        )
+        self.commit(db=db, inst=record_group)
+        return record_group
+
+    def make_empty_record_in_users(self, event, db: Session, user_id: int):
+        record: User = User(
+            id=user_id,
+            chat_id=event.chat_id,
+            pdr_num=0,
+            fucked=0
+        )
+        self.commit(db=db, inst=record)
+        return record
+
+    def random_pdr(self, db: Session, event):
+        # Getting all users from chat
+        users = self.vk.messages.getConversationMembers(peer_id=event.message['peer_id'])
+
+        users, user = self.get_random_user(users)
+
+        # Getting record from table
+        record_group: Group = db.query(Group).filter(Group.id == event.chat_id).first()
+
+        # Is record exist
+        if record_group is None:  # Make record if not
+            record_group = self.make_empty_record_in_groups(event=event, db=db)
+
+        # Check if we had already chosen pdr user today
+        if datetime.today().date() == record_group.pdr_date:
+            user = self.vk.users.get(user_ids=record_group.today_pdr)[0]
+            self.send_message(event.chat_id,
+                              text=f'Вы же знаете, сегодня пидор - '
+                                   f'[id{user["id"]}|{user["first_name"]} {user["last_name"]}]')
+            fucked = self.vk.users.get(user_ids=record_group.who_is_fucked, name_case='acc')[0]
+            self.send_message(event.chat_id,
+                              text=f"А трахает он - "
+                                   f"[id{fucked['id']}|{fucked['first_name']} {fucked['last_name']}]")
+        # If not
+        else:
+            users, fucked = self.get_random_user(users)
+            fucked_temp = self.vk.users.get(user_ids=fucked['id'], name_case='acc')[0]
+
+            record_group.today_pdr = user['id']
+            record_group.pdr_date = datetime.today()
+            record_group.who_is_fucked = fucked['id']
+            self.commit(db=db, inst=record_group)
+
+            record_user: User = db.query(User).filter(User.id == user['id'], User.chat_id == event.chat_id).first()
+            if record_user is None:
+                record_user = self.make_empty_record_in_users(event=event, db=db, user_id=user['id'])
+
+            record_fucked: User = db.query(User).filter(
+                User.id == fucked['id'], User.chat_id == event.chat_id).first()
+            if record_fucked is None:
+                record_fucked = self.make_empty_record_in_users(event=event, db=db, user_id=fucked['id'])
+            record_fucked.fucked += 1
+            self.commit(db=db, inst=record_fucked)
+
+            record_user.pdr_num += 1
+            self.commit(db=db, inst=record_user)
+
+            self.send_message(chat_id=event.chat_id,
+                              text=f'Сегодня пидор - '
+                                   f'[id{user["id"]}|{user["first_name"]} {user["last_name"]}]')
+            self.send_message(event.chat_id,
+                              text=f"А трахает он - "
+                                   f"[id{fucked['id']}|{fucked_temp['first_name']} {fucked_temp['last_name']}]")
+
+    def statistics(self, db: Session, event: VkBotMessageEvent, option: bool):
+        # Getting all users from chat
+        users = self.vk.messages.getConversationMembers(peer_id=event.message['peer_id'])
+        text = ''
+        for user in users['items']:
+            if user['member_id'] < 0:
+                continue
+            user = self.vk.users.get(user_ids=user['member_id'])[0]
+            record_user: User = db.query(User).filter(User.id == user['id'], User.chat_id == event.chat_id).first()
+            record_groups: Group = db.query(Group).filter(Group.id == event.chat_id).first()
+            if record_groups is None:
+                self.make_empty_record_in_groups(event=event, db=db)
+            if record_user is None:
+                record_user = self.make_empty_record_in_users(event=event, db=db, user_id=user['id'])
+                user = self.vk.users.get(user_ids=record_user.id)[0]
+            count_num = record_user.pdr_num if option else record_user.fucked
+            text += f'[id{user["id"]}|' \
+                    f'{user["first_name"]} ' \
+                    f'{user["last_name"]}] {"имел титул" if option else "зашёл не в ту дверь"} ' \
+                    f'{count_num} ' \
+                    f'{"раза" if count_num % 10 in [2, 3, 4] and count_num not in [12, 13, 14] else "раз"}\n'
+        self.send_message(chat_id=event.chat_id, text=text)
+
+    def pdr_of_the_year(self, db: Session, event: VkBotMessageEvent):
+        record_group: Group = db.query(Group).filter(Group.id == event.chat_id).first()
+        if record_group is None:
+            record_group = self.make_empty_record_in_groups(event=event, db=db)
+        if record_group.year_pdr is not None and datetime.today().year == record_group.year_pdr_num:
+            user = self.vk.users.get(user_ids=record_group.year_pdr)[0]
+            self.send_message(event.chat_id,
+                              text=f"Пидр этого года уже извстен, это - "
+                                   f"[id{user['id']}|{user['first_name']} {user['last_name']}]")
+        else:
+            users = self.vk.messages.getConversationMembers(peer_id=event.message['peer_id'])
+
+            users, user = self.get_random_user(users)
+            record_group.year_pdr = user['id']
+            self.commit(db, record_group)
+            self.send_message(event.chat_id,
+                              text=f"Я нашёл главного пидора этого года, это - "
+                                   f"[id{user['id']}|{user['first_name']} {user['last_name']}]")
+
+    def send_message(self, chat_id, text):
+        self.vk.messages.send(
+            key=(self.params['key']),
+            server=(self.params['server']),
+            ts=(self.params['ts']),
+            random_id=get_random_id(),
+            message=text,
+            chat_id=chat_id
+        )
+
+    def suka_all(self, event):
+        messages = [f"Я [id{event.message['from_id']}|тебе] сейчас allну по ебалу",
+                    f"Ты чего охуел, [id{event.message['from_id']}|Пидор], блять???"]
+        self.send_message(event.chat_id,
+                          text=choice(messages))
+
+    def listen(self):
+
+        longpoll = VkBotLongPoll(self.vk_session, 209871225)
+
+        # listen for events
+        for event in longpoll.listen():
+            if event.type == VkBotEventType.MESSAGE_NEW:
+                session: Session = get_db()
+                message: str = event.message['text']
+                if event.from_chat:
+                    if message.lower() in ['рандом', 'кто пидор?', 'рандомчик', 'пидор дня']:
+                        self.random_pdr(db=session, event=event)
+                    elif message.lower() in ['годовалый', 'пидор года']:
+                        self.pdr_of_the_year(db=session, event=event)
+                    elif message.lower() in ['титулы', 'кол-во пидоров', 'статистика титулы', 'статистика']:
+                        self.statistics(db=session, event=event, option=True)
+                    elif message.lower() in ['статистика пассивных']:
+                        self.statistics(db=session, event=event, option=False)
+                    elif '@all' in message.lower():
+                        self.suka_all(event)
+                session.close()
+
+
+if __name__ == '__main__':
+    bot = Bot()
+    bot.listen()

@@ -19,6 +19,7 @@ from json import loads
 
 class Bot:
     def __init__(self):
+        Base.metadata.drop_all()
         # Tables creation
         Base.metadata.create_all(bind=engine)
 

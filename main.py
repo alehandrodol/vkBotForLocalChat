@@ -22,7 +22,7 @@ class Bot:
 
         # Auth
         self.vk_session = vk_api.VkApi(
-            token='TOKEN')
+            token='e870b89da7be761fae34bcbd531d1530941bcc0e85feb26a15f65f09ded05dbb77eded17d0b58963c34e3')
         self.vk = self.vk_session.get_api()
         self.params = self.vk.groups.getLongPollServer(group_id=209871225)
 
@@ -190,17 +190,31 @@ class Bot:
             if event.type == VkBotEventType.MESSAGE_NEW:
                 session: Session = get_db()
                 message: str = event.message['text']
+                randoms = ['рандом', 'кто пидор?', 'рандомчик', 'пидор дня']
+                year = ['годовалый', 'пидор года']
+                pdr_stats = ['титулы', 'кол-во пидоров', 'статистика титулы', 'статистика']
+                fucked_stats = ['статистика пассивных']
                 if event.from_chat:
-                    if message.lower() in ['рандом', 'кто пидор?', 'рандомчик', 'пидор дня']:
+                    if message.lower() in randoms:
                         self.random_pdr(db=session, event=event)
-                    elif message.lower() in ['годовалый', 'пидор года']:
+                    elif message.lower() in year:
                         self.pdr_of_the_year(db=session, event=event)
-                    elif message.lower() in ['титулы', 'кол-во пидоров', 'статистика титулы', 'статистика']:
+                    elif message.lower() in pdr_stats:
                         self.statistics(db=session, event=event, option=True)
-                    elif message.lower() in ['статистика пассивных']:
+                    elif message.lower() in fucked_stats:
                         self.statistics(db=session, event=event, option=False)
                     elif '@all' in message.lower():
                         self.suka_all(event)
+                    elif message == 'команды':
+                        text = ""
+                        text += f"выбор пидора дня: {' '.join(randoms)}\n " \
+                                f"выбор пидора года: {' '.join(year)}\n" \
+                                f"показ статистики титулов: {' '.join(pdr_stats)}\n" \
+                                f"показ статистики пассивных: {' '.join(fucked_stats)}\n" \
+                                f"хочешь чтоб тебя послали нахуй? Попробуй написать all"
+
+                        self.send_message(event.chat_id,
+                                          text=text)
                 session.close()
 
 

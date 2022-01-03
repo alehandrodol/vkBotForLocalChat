@@ -22,7 +22,7 @@ class Bot:
 
         # Auth
         self.vk_session = vk_api.VkApi(
-            token='e870b89da7be761fae34bcbd531d1530941bcc0e85feb26a15f65f09ded05dbb77eded17d0b58963c34e3')
+            token='TOKEN')
         self.vk = self.vk_session.get_api()
         self.params = self.vk.groups.getLongPollServer(group_id=209871225)
 

@@ -12,7 +12,9 @@ from models import Group, User
 from sqlalchemy.orm import Session
 from datetime import datetime
 
-from typing import Union
+from typing import Union, List
+
+from json import loads
 
 
 class Bot:
@@ -25,6 +27,43 @@ class Bot:
             token='e870b89da7be761fae34bcbd531d1530941bcc0e85feb26a15f65f09ded05dbb77eded17d0b58963c34e3')
         self.vk = self.vk_session.get_api()
         self.params = self.vk.groups.getLongPollServer(group_id=209871225)
+
+        with open("./DataBases/groups_data.json", 'r') as f:
+            db: Session = get_db()
+            read = f.read()
+            data_list = loads(read)['values']
+            for line in data_list:
+                record_group: Group = db.query(Group).filter(Group.id == line[0]).first()
+                if record_group is None:
+                    record_group = Group(
+                        id=line[0],
+                        name=line[1],
+                        today_pdr=line[2],
+                        who_is_fucked=line[3],
+                        pdr_date=line[4],
+                        year_pdr=line[5],
+                        year_pdr_num=line[6]
+                    )
+                    self.commit(db=db, inst=record_group)
+            db.close()
+
+        with open("./DataBases/users_data.json", 'r') as f:
+            db: Session = get_db()
+            read = f.read()
+            data_list = loads(read)['values']
+            for line in data_list:
+                record_user: User = db.query(User).filter(User.id == line[0], User.chat_id == line[1]).first()
+                if record_user is None:
+                    record_user = User(
+                        id=line[0],
+                        chat_id=line[1],
+                        firstname=line[2],
+                        lastname=line[3],
+                        pdr_num=line[4],
+                        fucked=line[5]
+                    )
+                    self.commit(db=db, inst=record_user)
+            db.close()
 
     @staticmethod
     def commit(db: Session, inst: Union[Group, User]):
@@ -60,9 +99,12 @@ class Bot:
         return record_group
 
     def make_empty_record_in_users(self, event, db: Session, user_id: int):
+        user = self.vk.users.get(user_ids=user_id)[0]
         record: User = User(
             id=user_id,
             chat_id=event.chat_id,
+            firstname=user['first_name'],
+            lastname=user['last_name'],
             pdr_num=0,
             fucked=0
         )
@@ -124,24 +166,30 @@ class Bot:
                                    f"[id{fucked['id']}|{fucked_temp['first_name']} {fucked_temp['last_name']}]")
 
     def statistics(self, db: Session, event: VkBotMessageEvent, option: bool):
+        record_group: Group = db.query(Group).filter(Group.id == event.chat_id).first()
+        if record_group is None:
+            self.make_empty_record_in_groups(event=event, db=db)
+        if option:
+            users_records: List[User] = db.query(User).order_by(User.pdr_num.desc()). \
+                filter(User.chat_id == event.chat_id).all()
+        else:
+            users_records: List[User] = db.query(User).order_by(User.fucked.desc()). \
+                filter(User.chat_id == event.chat_id).all()
         # Getting all users from chat
         users = self.vk.messages.getConversationMembers(peer_id=event.message['peer_id'])
+        users_ids_in_conversation = [user['member_id'] for user in users['items'] if user['member_id'] > 0]
+        user_ids_in_db: List[int] = [user.id for user in users_records]
+        if len(users_ids_in_conversation) > len(user_ids_in_db):
+            for user_id in users_ids_in_conversation:
+                if user_id not in user_ids_in_db:
+                    record_user = self.make_empty_record_in_users(event=event, db=db, user_id=user_id)
+                    users_records.append(record_user)
         text = ''
-        for user in users['items']:
-            if user['member_id'] < 0:
-                continue
-            user = self.vk.users.get(user_ids=user['member_id'])[0]
-            record_user: User = db.query(User).filter(User.id == user['id'], User.chat_id == event.chat_id).first()
-            record_groups: Group = db.query(Group).filter(Group.id == event.chat_id).first()
-            if record_groups is None:
-                self.make_empty_record_in_groups(event=event, db=db)
-            if record_user is None:
-                record_user = self.make_empty_record_in_users(event=event, db=db, user_id=user['id'])
-                user = self.vk.users.get(user_ids=record_user.id)[0]
+        for record_user in users_records:
             count_num = record_user.pdr_num if option else record_user.fucked
-            text += f'[id{user["id"]}|' \
-                    f'{user["first_name"]} ' \
-                    f'{user["last_name"]}] {"имел титул" if option else "зашёл не в ту дверь"} ' \
+            text += f'[id{record_user.id}|' \
+                    f'{record_user.firstname} ' \
+                    f'{record_user.lastname}] {"имел титул" if option else "зашёл не в ту дверь"} ' \
                     f'{count_num} ' \
                     f'{"раза" if count_num % 10 in [2, 3, 4] and count_num not in [12, 13, 14] else "раз"}\n'
         self.send_message(chat_id=event.chat_id, text=text)
@@ -207,10 +255,10 @@ class Bot:
                         self.suka_all(event)
                     elif message == 'команды':
                         text = ""
-                        text += f"выбор пидора дня: {' '.join(randoms)}\n " \
-                                f"выбор пидора года: {' '.join(year)}\n" \
-                                f"показ статистики титулов: {' '.join(pdr_stats)}\n" \
-                                f"показ статистики пассивных: {' '.join(fucked_stats)}\n" \
+                        text += f"выбор пидора дня: {', '.join(randoms)}\n " \
+                                f"выбор пидора года: {', '.join(year)}\n" \
+                                f"показ статистики титулов: {', '.join(pdr_stats)}\n" \
+                                f"показ статистики пассивных: {', '.join(fucked_stats)}\n" \
                                 f"хочешь чтоб тебя послали нахуй? Попробуй написать all"
 
                         self.send_message(event.chat_id,

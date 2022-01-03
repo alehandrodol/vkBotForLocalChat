@@ -20,6 +20,8 @@ class User(Base):
 
     id = Column(Integer, primary_key=True)
     chat_id = Column(Integer, ForeignKey('groups.id'), primary_key=True, unique=False)
+    firstname = Column(String)
+    lastname = Column(String)
     pdr_num = Column(Integer)
     fucked = Column(Integer)
     group = relationship(Group)

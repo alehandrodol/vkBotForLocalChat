@@ -129,7 +129,7 @@ class Bot:
 
         moscow_zone = pytz.timezone("Europe/Moscow")
         # Check if we had already chosen pdr user today
-        if moscow_zone.localize(datetime.today()).date() == record_group.pdr_date:
+        if str(moscow_zone.localize(datetime.today()).date()) == record_group.pdr_date:
             user = self.vk.users.get(user_ids=record_group.today_pdr)[0]
             self.send_message(event.chat_id,
                               text=f'Вы же знаете, сегодня пидор - '
@@ -144,7 +144,7 @@ class Bot:
             fucked_temp = self.vk.users.get(user_ids=fucked['id'], name_case='acc')[0]
 
             record_group.today_pdr = user['id']
-            record_group.pdr_date = moscow_zone.localize(datetime.today()).date()
+            record_group.pdr_date = str(moscow_zone.localize(datetime.today()))
             record_group.who_is_fucked = fucked['id']
             self.commit(db=db, inst=record_group)
 

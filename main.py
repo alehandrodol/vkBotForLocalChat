@@ -16,6 +16,8 @@ from typing import Union, List
 
 from json import loads
 
+import pytz
+
 
 class Bot:
     def __init__(self):
@@ -125,8 +127,9 @@ class Bot:
         if record_group is None:  # Make record if not
             record_group = self.make_empty_record_in_groups(event=event, db=db)
 
+        moscow_zone = pytz.timezone("Russia/Moscow")
         # Check if we had already chosen pdr user today
-        if datetime.today().date() == record_group.pdr_date:
+        if moscow_zone.localize(datetime.today()).date() == record_group.pdr_date:
             user = self.vk.users.get(user_ids=record_group.today_pdr)[0]
             self.send_message(event.chat_id,
                               text=f'Вы же знаете, сегодня пидор - '

@@ -144,7 +144,7 @@ class Bot:
             fucked_temp = self.vk.users.get(user_ids=fucked['id'], name_case='acc')[0]
 
             record_group.today_pdr = user['id']
-            record_group.pdr_date = datetime.today()
+            record_group.pdr_date = moscow_zone.localize(datetime.today()).date()
             record_group.who_is_fucked = fucked['id']
             self.commit(db=db, inst=record_group)
 

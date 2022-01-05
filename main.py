@@ -74,20 +74,20 @@ class Bot:
         db.commit()
         db.refresh(inst)
 
-    def get_random_user(self, users):
+    def get_random_user(self, users: list[dict]) -> tuple[list[dict], dict]:
         # Choosing random user from list
-        num = randint(0, len(users['items'])-1)
-        user_id = users['items'][num]['member_id']
+        num = randint(0, len(users)-1)
+        user_id = users[num]['member_id']
         while user_id < 0:
-            num = randint(0, len(users['items']) - 1)
-            user_id = users['items'][num]['member_id']
+            num = randint(0, len(users) - 1)
+            user_id = users[num]['member_id']
 
-        users['items'].pop(num)
+        users.pop(num)
         # Getting more info about user
         user = self.vk.users.get(user_ids=user_id)
         return users, user[0]
 
-    def make_empty_record_in_groups(self, event, db: Session):
+    def make_empty_record_in_groups(self, event: VkBotMessageEvent, db: Session) -> Group:
         chat_name = self.vk.messages.getConversationsById(
             peer_ids=event.message['peer_id'])['items'][0]['chat_settings']['title']
         record_group = Group(
@@ -101,7 +101,7 @@ class Bot:
         self.commit(db=db, inst=record_group)
         return record_group
 
-    def make_empty_record_in_users(self, event, db: Session, user_id: int):
+    def make_empty_record_in_users(self, event: VkBotMessageEvent, db: Session, user_id: int) -> User:
         user = self.vk.users.get(user_ids=user_id)[0]
         record: User = User(
             id=user_id,
@@ -114,11 +114,11 @@ class Bot:
         self.commit(db=db, inst=record)
         return record
 
-    def random_pdr(self, db: Session, event):
+    def random_pdr(self, db: Session, event: VkBotMessageEvent) -> None:
         # Getting all users from chat
         users = self.vk.messages.getConversationMembers(peer_id=event.message['peer_id'])
 
-        users, user = self.get_random_user(users)
+        users, user = self.get_random_user(users['items'])
 
         # Getting record from table
         record_group: Group = db.query(Group).filter(Group.id == event.chat_id).first()
@@ -169,7 +169,7 @@ class Bot:
                               text=f"А трахает он - "
                                    f"[id{fucked['id']}|{fucked_temp['first_name']} {fucked_temp['last_name']}]")
 
-    def statistics(self, db: Session, event: VkBotMessageEvent, option: bool):
+    def statistics(self, db: Session, event: VkBotMessageEvent, option: bool) -> None:
         record_group: Group = db.query(Group).filter(Group.id == event.chat_id).first()
         if record_group is None:
             self.make_empty_record_in_groups(event=event, db=db)
@@ -198,7 +198,7 @@ class Bot:
                     f'{"раза" if count_num % 10 in [2, 3, 4] and count_num not in [12, 13, 14] else "раз"}\n'
         self.send_message(chat_id=event.chat_id, text=text)
 
-    def pdr_of_the_year(self, db: Session, event: VkBotMessageEvent):
+    def pdr_of_the_year(self, db: Session, event: VkBotMessageEvent) -> None:
         record_group: Group = db.query(Group).filter(Group.id == event.chat_id).first()
         if record_group is None:
             record_group = self.make_empty_record_in_groups(event=event, db=db)
@@ -217,7 +217,7 @@ class Bot:
                               text=f"Я нашёл главного пидора этого года, это - "
                                    f"[id{user['id']}|{user['first_name']} {user['last_name']}]")
 
-    def send_message(self, chat_id, text):
+    def send_message(self, chat_id, text) -> None:
         self.vk.messages.send(
             key=(self.params['key']),
             server=(self.params['server']),
@@ -227,11 +227,19 @@ class Bot:
             chat_id=chat_id
         )
 
-    def suka_all(self, event):
+    def suka_all(self, event: VkBotMessageEvent) -> None:
         messages = [f"Я [id{event.message['from_id']}|тебе] сейчас allну по ебалу",
                     f"Ты чего охуел, [id{event.message['from_id']}|Пидор], блять???"]
         self.send_message(event.chat_id,
                           text=choice(messages))
+
+    def personal_stats(self, event: VkBotMessageEvent, db: Session) -> None:
+        record_user: User = db.query(User).filter(User.id == event.message['from_id'], User.chat_id == event.chat_id)
+        self.send_message(chat_id=event.chat_id,
+                          text=f"[id{record_user.id}|Ты] был титулован {record_user.pdr_num} "
+                               f"{'раза' if record_user.id % 10 in [2, 3, 4] and record_user.id not in [12, 13, 14] else 'раз'}\n"
+                               f"и зашёл не в тот gym {record_user.fucked}"
+                               f"{'раза' if record_user.fucked % 10 in [2, 3, 4] and record_user.fucked not in [12, 13, 14] else 'раз'}\n")
 
     def listen(self):
 
@@ -253,6 +261,8 @@ class Bot:
                         self.pdr_of_the_year(db=session, event=event)
                     elif message.lower() in pdr_stats:
                         self.statistics(db=session, event=event, option=True)
+                    elif message.lower() == "моя статистика":
+                        self.personal_stats(event=event, db=session)
                     elif message.lower() in fucked_stats:
                         self.statistics(db=session, event=event, option=False)
                     elif '@all' in message.lower():

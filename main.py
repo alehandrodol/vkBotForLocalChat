@@ -234,11 +234,12 @@ class Bot:
                           text=choice(messages))
 
     def personal_stats(self, event: VkBotMessageEvent, db: Session) -> None:
-        record_user: User = db.query(User).filter(User.id == event.message['from_id'], User.chat_id == event.chat_id)
+        record_user: User = db.query(User). \
+            filter(User.id == event.message['from_id'], User.chat_id == event.chat_id).first()
         self.send_message(chat_id=event.chat_id,
                           text=f"[id{record_user.id}|Ты] был титулован {record_user.pdr_num} "
                                f"{'раза' if record_user.id % 10 in [2, 3, 4] and record_user.id not in [12, 13, 14] else 'раз'}\n"
-                               f"и зашёл не в тот gym {record_user.fucked}"
+                               f"и зашёл не в тот gym {record_user.fucked} "
                                f"{'раза' if record_user.fucked % 10 in [2, 3, 4] and record_user.fucked not in [12, 13, 14] else 'раз'}\n")
 
     def listen(self):

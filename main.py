@@ -21,7 +21,7 @@ import pytz
 
 class Bot:
     def __init__(self):
-        Base.metadata.drop_all(bind=engine)
+        # Base.metadata.drop_all(bind=engine)
         # Tables creation
         Base.metadata.create_all(bind=engine)
 
@@ -191,6 +191,8 @@ class Bot:
         text = ''
         for record_user in users_records:
             count_num = record_user.pdr_num if option else record_user.fucked
+            if count_num <= 0:
+                continue
             text += f'[id{record_user.id}|' \
                     f'{record_user.firstname} ' \
                     f'{record_user.lastname}] {"имел титул" if option else "зашёл не в ту дверь"} ' \

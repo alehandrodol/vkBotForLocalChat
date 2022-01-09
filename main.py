@@ -229,7 +229,7 @@ class Bot:
         else:
             users = self.vk.messages.getConversationMembers(peer_id=event.message['peer_id'])
 
-            users, user = self.get_random_user(users)
+            users, user = self.get_random_user(users['items'])
             record_user: User = db.query(User).filter(User.id == user['id'], User.chat_id == event.chat_id).first()
             record_user.rating += 2000
             record_user.pdr_of_the_year += 1

@@ -203,7 +203,7 @@ class Bot:
                 if record_user.rating <= 0:
                     continue
                 text += f'{record_user.firstname} ' \
-                        f'{record_user.lastname}] ' \
+                        f'{record_user.lastname} ' \
                         f'имеет рейтинг пидора: {record_user.rating}\n'
             else:
                 count_num = record_user.pdr_num if option == 1 else record_user.fucked

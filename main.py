@@ -64,7 +64,8 @@ class Bot:
                         lastname=line[3],
                         pdr_num=line[4],
                         fucked=line[5],
-                        rating=line[6]
+                        rating=line[6],
+                        pdr_of_the_year=line[7]
                     )
                     self.commit(db=db, inst=record_user)
             db.close()
@@ -111,7 +112,8 @@ class Bot:
             lastname=user['last_name'],
             pdr_num=0,
             fucked=0,
-            rating=0
+            rating=0,
+            pdr_of_the_year=0
         )
         self.commit(db=db, inst=record)
         return record
@@ -159,9 +161,11 @@ class Bot:
             if record_fucked is None:
                 record_fucked = self.make_empty_record_in_users(event=event, db=db, user_id=fucked['id'])
             record_fucked.fucked += 1
+            record_fucked.rating += 50
             self.commit(db=db, inst=record_fucked)
 
             record_user.pdr_num += 1
+            record_user.rating += 100
             self.commit(db=db, inst=record_user)
 
             self.send_message(chat_id=event.chat_id,
@@ -171,15 +175,18 @@ class Bot:
                               text=f"А трахает он - "
                                    f"[id{fucked['id']}|{fucked_temp['first_name']} {fucked_temp['last_name']}]")
 
-    def statistics(self, db: Session, event: VkBotMessageEvent, option: bool) -> None:
+    def statistics(self, db: Session, event: VkBotMessageEvent, option: int) -> None:
         record_group: Group = db.query(Group).filter(Group.id == event.chat_id).first()
         if record_group is None:
             self.make_empty_record_in_groups(event=event, db=db)
-        if option:
+        if option == 1:
             users_records: List[User] = db.query(User).order_by(User.pdr_num.desc()). \
                 filter(User.chat_id == event.chat_id).all()
-        else:
+        elif option == 2:
             users_records: List[User] = db.query(User).order_by(User.fucked.desc()). \
+                filter(User.chat_id == event.chat_id).all()
+        else:
+            users_records: List[User] = db.query(User).order_by(User.rating.desc()). \
                 filter(User.chat_id == event.chat_id).all()
         # Getting all users from chat
         users = self.vk.messages.getConversationMembers(peer_id=event.message['peer_id'])
@@ -192,14 +199,22 @@ class Bot:
                     users_records.append(record_user)
         text = ''
         for record_user in users_records:
-            count_num = record_user.pdr_num if option else record_user.fucked
-            if count_num <= 0:
-                continue
-            text += f'[id{record_user.id}|' \
-                    f'{record_user.firstname} ' \
-                    f'{record_user.lastname}] {"имел титул" if option else "зашёл не в ту дверь"} ' \
-                    f'{count_num} ' \
-                    f'{"раза" if count_num % 10 in [2, 3, 4] and count_num not in [12, 13, 14] else "раз"}\n'
+            if option == 3:
+                if record_user.rating <= 0:
+                    continue
+                text += f'[id{record_user.id}|' \
+                        f'{record_user.firstname} ' \
+                        f'{record_user.lastname}] ' \
+                        f'имеет рейтинг пидора: {record_user.rating}.\n'
+            else:
+                count_num = record_user.pdr_num if option == 1 else record_user.fucked
+                if count_num <= 0:
+                    continue
+                text += f'[id{record_user.id}|' \
+                        f'{record_user.firstname} ' \
+                        f'{record_user.lastname}] {"имел титул" if option else "зашёл не в ту дверь"} ' \
+                        f'{count_num} ' \
+                        f'{"раза" if count_num % 10 in [2, 3, 4] and count_num not in [12, 13, 14] else "раз"}\n'
         self.send_message(chat_id=event.chat_id, text=text)
 
     def pdr_of_the_year(self, db: Session, event: VkBotMessageEvent) -> None:
@@ -215,8 +230,12 @@ class Bot:
             users = self.vk.messages.getConversationMembers(peer_id=event.message['peer_id'])
 
             users, user = self.get_random_user(users)
+            record_user: User = db.query(User).filter(User.id == user['id'], User.chat_id == event.chat_id).first()
+            record_user.rating += 2000
+            record_user.pdr_of_the_year += 1
             record_group.year_pdr = user['id']
             self.commit(db, record_group)
+            self.commit(db, record_user)
             self.send_message(event.chat_id,
                               text=f"Я нашёл главного пидора этого года, это - "
                                    f"[id{user['id']}|{user['first_name']} {user['last_name']}]")
@@ -244,7 +263,9 @@ class Bot:
                           text=f"[id{record_user.id}|Ты] был титулован {record_user.pdr_num} "
                                f"{'раза' if record_user.id % 10 in [2, 3, 4] and record_user.id not in [12, 13, 14] else 'раз'}\n"
                                f"и зашёл не в тот gym {record_user.fucked} "
-                               f"{'раза' if record_user.fucked % 10 in [2, 3, 4] and record_user.fucked not in [12, 13, 14] else 'раз'}\n")
+                               f"{'раза' if record_user.fucked % 10 in [2, 3, 4] and record_user.fucked not in [12, 13, 14] else 'раз'}\n"
+                               f"Твой рейтинг сейчас: {record_user.rating}\n"
+                               f"Кол-во титулов 'Пидор года': {record_user.pdr_of_the_year}")
 
     def listen(self):
 
@@ -259,17 +280,20 @@ class Bot:
                 year = ['годовалый', 'пидор года']
                 pdr_stats = ['титулы', 'кол-во пидоров', 'статистика титулы', 'статистика']
                 fucked_stats = ['статистика пассивных']
+                ratings = ['рейтинги', 'таблица', 'лидерборд']
                 if event.from_chat:
                     if message.lower() in randoms:
                         self.random_pdr(db=session, event=event)
                     elif message.lower() in year:
                         self.pdr_of_the_year(db=session, event=event)
                     elif message.lower() in pdr_stats:
-                        self.statistics(db=session, event=event, option=True)
+                        self.statistics(db=session, event=event, option=1)
                     elif message.lower() == "моя статистика":
                         self.personal_stats(event=event, db=session)
                     elif message.lower() in fucked_stats:
-                        self.statistics(db=session, event=event, option=False)
+                        self.statistics(db=session, event=event, option=2)
+                    elif message.lower() in ratings:
+                        self.statistics(db=session, event=event, option=3)
                     elif '@all' in message.lower():
                         self.suka_all(event)
                     elif message == 'команды':
@@ -279,7 +303,8 @@ class Bot:
                                 f"Показ статистики титулов: {', '.join(pdr_stats)};\n" \
                                 f"Показ статистики пассивных: {', '.join(fucked_stats)};\n" \
                                 f"Хочешь чтоб тебя послали нахуй? Попробуй написать all;\n" \
-                                f"Чтобы узнать статистику только по тебе, используй 'моя статистика'."
+                                f"Чтобы узнать статистику только по тебе, используй 'моя статистика';\n" \
+                                f"Показать рейтинги участников: {', '.join(ratings)}."
 
                         self.send_message(event.chat_id,
                                           text=text)

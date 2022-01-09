@@ -25,4 +25,5 @@ class User(Base):
     pdr_num = Column(Integer)
     fucked = Column(Integer)
     rating = Column(Integer)
+    pdr_of_the_year = Column(Integer)
     group = relationship(Group)

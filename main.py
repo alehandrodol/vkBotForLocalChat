@@ -27,7 +27,7 @@ class Bot:
 
         # Auth
         self.vk_session = vk_api.VkApi(
-            token='e870b89da7be761fae34bcbd531d1530941bcc0e85feb26a15f65f09ded05dbb77eded17d0b58963c34e3')
+            token='da1624cd3e67c479150a5d2765871036cb4ead83631e03c57a7d288b26f4517a53615a3700012cad2a0b1')
         self.vk = self.vk_session.get_api()
         self.params = self.vk.groups.getLongPollServer(group_id=209871225)
 
@@ -137,11 +137,11 @@ class Bot:
             user = self.vk.users.get(user_ids=record_group.today_pdr)[0]
             self.send_message(event.chat_id,
                               text=f'Вы же знаете, сегодня пидор - '
-                                   f'[id{user["id"]}|{user["first_name"]} {user["last_name"]}]')
+                                   f'{user["first_name"]} {user["last_name"]}')
             fucked = self.vk.users.get(user_ids=record_group.who_is_fucked, name_case='acc')[0]
             self.send_message(event.chat_id,
                               text=f"А трахает он - "
-                                   f"[id{fucked['id']}|{fucked['first_name']} {fucked['last_name']}]")
+                                   f"{fucked['first_name']} {fucked['last_name']}")
         # If not
         else:
             users, fucked = self.get_random_user(users)
@@ -202,17 +202,15 @@ class Bot:
             if option == 3:
                 if record_user.rating <= 0:
                     continue
-                text += f'[id{record_user.id}|' \
-                        f'{record_user.firstname} ' \
+                text += f'{record_user.firstname} ' \
                         f'{record_user.lastname}] ' \
-                        f'имеет рейтинг пидора: {record_user.rating}.\n'
+                        f'имеет рейтинг пидора: {record_user.rating}\n'
             else:
                 count_num = record_user.pdr_num if option == 1 else record_user.fucked
                 if count_num <= 0:
                     continue
-                text += f'[id{record_user.id}|' \
-                        f'{record_user.firstname} ' \
-                        f'{record_user.lastname}] {"имел титул" if option else "зашёл не в ту дверь"} ' \
+                text += f'{record_user.firstname} ' \
+                        f'{record_user.lastname} {"имел титул" if option else "зашёл не в ту дверь"} ' \
                         f'{count_num} ' \
                         f'{"раза" if count_num % 10 in [2, 3, 4] and count_num not in [12, 13, 14] else "раз"}\n'
         self.send_message(chat_id=event.chat_id, text=text)
@@ -261,7 +259,7 @@ class Bot:
             filter(User.id == event.message['from_id'], User.chat_id == event.chat_id).first()
         self.send_message(chat_id=event.chat_id,
                           text=f"[id{record_user.id}|Ты] был титулован {record_user.pdr_num} "
-                               f"{'раза' if record_user.id % 10 in [2, 3, 4] and record_user.id not in [12, 13, 14] else 'раз'}\n"
+                               f"{'раза' if record_user.id % 10 in [2, 3, 4] and record_user.id not in [12, 13, 14] else 'раз'} "
                                f"и зашёл не в тот gym {record_user.fucked} "
                                f"{'раза' if record_user.fucked % 10 in [2, 3, 4] and record_user.fucked not in [12, 13, 14] else 'раз'}\n"
                                f"Твой рейтинг сейчас: {record_user.rating}\n"

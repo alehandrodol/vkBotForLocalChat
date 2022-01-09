@@ -21,7 +21,7 @@ import pytz
 
 class Bot:
     def __init__(self):
-        # Base.metadata.drop_all(bind=engine)
+        Base.metadata.drop_all(bind=engine)
         # Tables creation
         Base.metadata.create_all(bind=engine)
 
@@ -272,11 +272,11 @@ class Bot:
                         self.suka_all(event)
                     elif message == 'команды':
                         text = ""
-                        text += f"выбор пидора дня: {', '.join(randoms)};\n " \
-                                f"выбор пидора года: {', '.join(year)};\n" \
-                                f"показ статистики титулов: {', '.join(pdr_stats)};\n" \
-                                f"показ статистики пассивных: {', '.join(fucked_stats)};\n" \
-                                f"хочешь чтоб тебя послали нахуй? Попробуй написать all;" \
+                        text += f"Выбор пидора дня: {', '.join(randoms)};\n " \
+                                f"Выбор пидора года: {', '.join(year)};\n" \
+                                f"Показ статистики титулов: {', '.join(pdr_stats)};\n" \
+                                f"Показ статистики пассивных: {', '.join(fucked_stats)};\n" \
+                                f"Хочешь чтоб тебя послали нахуй? Попробуй написать all;\n" \
                                 f"Чтобы узнать статистику только по тебе, используй 'моя статистика'."
 
                         self.send_message(event.chat_id,

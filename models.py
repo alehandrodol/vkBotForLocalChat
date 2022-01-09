@@ -24,4 +24,5 @@ class User(Base):
     lastname = Column(String)
     pdr_num = Column(Integer)
     fucked = Column(Integer)
+    rating = Column(Integer)
     group = relationship(Group)

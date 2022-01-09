@@ -63,7 +63,8 @@ class Bot:
                         firstname=line[2],
                         lastname=line[3],
                         pdr_num=line[4],
-                        fucked=line[5]
+                        fucked=line[5],
+                        rating=line[6]
                     )
                     self.commit(db=db, inst=record_user)
             db.close()
@@ -109,7 +110,8 @@ class Bot:
             firstname=user['first_name'],
             lastname=user['last_name'],
             pdr_num=0,
-            fucked=0
+            fucked=0,
+            rating=0
         )
         self.commit(db=db, inst=record)
         return record

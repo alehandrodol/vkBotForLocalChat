@@ -119,6 +119,7 @@ class Bot:
         return record
 
     def random_pdr(self, db: Session, event: VkBotMessageEvent) -> None:
+
         # Getting all users from chat
         users = self.vk.messages.getConversationMembers(peer_id=event.message['peer_id'])
 
@@ -144,6 +145,10 @@ class Bot:
                                    f"{fucked['first_name']} {fucked['last_name']}")
         # If not
         else:
+            launch_user: User = db.query(User).filter(User.id == event.message['from_id']).first()
+            launch_user.rating += 25
+            self.commit(db, launch_user)
+
             users, fucked = self.get_random_user(users)
             fucked_temp = self.vk.users.get(user_ids=fucked['id'], name_case='acc')[0]
 
@@ -279,6 +284,7 @@ class Bot:
                 pdr_stats = ['титулы', 'кол-во пидоров', 'статистика титулы', 'статистика']
                 fucked_stats = ['статистика пассивных']
                 ratings = ['рейтинги', 'таблица', 'лидерборд']
+                pictures = ['пикчу', 'фотку', 'дай фотку', 'рофл', 'ор']
                 if event.from_chat:
                     if message.lower() in randoms:
                         self.random_pdr(db=session, event=event)

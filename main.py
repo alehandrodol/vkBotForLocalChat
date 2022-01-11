@@ -205,7 +205,7 @@ class Bot:
         text = ''
         for record_user in users_records:
             if option == 3:
-                if record_user.rating <= 0:
+                if record_user.rating == 0:
                     continue
                 text += f'{record_user.firstname} ' \
                         f'{record_user.lastname} ' \
@@ -253,7 +253,10 @@ class Bot:
             chat_id=chat_id
         )
 
-    def suka_all(self, event: VkBotMessageEvent) -> None:
+    def suka_all(self, db: Session, event: VkBotMessageEvent) -> None:
+        launch_user: User = db.query(User).filter(User.id == event.message['from_id']).first()
+        launch_user.rating -= 5
+        self.commit(db, launch_user)
         messages = [f"Я [id{event.message['from_id']}|тебе] сейчас allну по ебалу",
                     f"Ты чего охуел, [id{event.message['from_id']}|Пидор], блять???"]
         self.send_message(event.chat_id,
@@ -322,7 +325,7 @@ class Bot:
                     elif message.lower() in ratings:
                         self.statistics(db=session, event=event, option=3)
                     elif '@all' in message.lower():
-                        self.suka_all(event)
+                        self.suka_all(session, event)
                     elif message == 'команды':
                         text = ""
                         text += f"Выбор пидора дня: {', '.join(randoms)};\n " \

@@ -14,7 +14,7 @@ from datetime import datetime
 
 from typing import Union, List
 
-from json import loads
+from json import loads, dump
 
 import pytz
 
@@ -279,7 +279,7 @@ class Bot:
             if event.type == VkBotEventType.MESSAGE_NEW:
                 session: Session = get_db()
                 message: str = event.message['text']
-                randoms = ['рандом', 'кто пидор?', 'рандомчик', 'пидор дня']
+                randoms = ['рандом', 'кто пидор?', 'рандомчик', 'пидор дня', 'заролить']
                 year = ['годовалый', 'пидор года']
                 pdr_stats = ['титулы', 'кол-во пидоров', 'статистика титулы', 'статистика']
                 fucked_stats = ['статистика пассивных']
@@ -287,7 +287,30 @@ class Bot:
                 pictures = ['пикчу', 'фотку', 'дай фотку', 'рофл', 'ор']
                 if event.from_chat:
                     if message.lower() in randoms:
-                        self.random_pdr(db=session, event=event)
+                        record_group: Group = session.query(Group).filter(Group.id == event.chat_id).first()
+                        moscow_zone = pytz.timezone("Europe/Moscow")
+                        # Check if we had already chosen pdr user today
+                        today = datetime.now(tz=moscow_zone).date()
+                        if today != record_group.pdr_date:
+                            with open("./DataBases/DayPhrase.json", 'r') as f:
+                                read: str = f.read()
+                                json_dict: dict = loads(read)
+
+                            if str(today) != json_dict['date']:
+                                phrase = choice(randoms)
+                                json_dict['date'] = str(today)
+                                json_dict['phrase'] = phrase
+                                with open("./DataBases/DayPhrase.json", 'w') as f:
+                                    dump(json_dict, f)
+                            if message == json_dict['phrase']:
+                                self.send_message(event.chat_id,
+                                                  text=f"[id{event.message['from_id']}|Ты] сегодня счастливчик")
+                                self.random_pdr(db=session, event=event)
+                            else:
+                                self.send_message(event.chat_id,
+                                                  text=f"[id{event.message['from_id']}|Ты] не угадал сегодняшнюю фразу")
+                        else:
+                            self.random_pdr(db=session, event=event)
                     elif message.lower() in year:
                         self.pdr_of_the_year(db=session, event=event)
                     elif message.lower() in pdr_stats:

@@ -79,10 +79,10 @@ class Bot:
 
     def get_random_user(self, users: list[dict]) -> tuple[list[dict], dict]:
         # Choosing random user from list
-        num = randint(0, len(users)-1)
+        num = datetime.today().microsecond % (len(users)-1)
         user_id = users[num]['member_id']
         while user_id < 0:
-            num = randint(0, len(users) - 1)
+            num = datetime.today().microsecond % (len(users)-1)
             user_id = users[num]['member_id']
 
         users.pop(num)
@@ -286,8 +286,8 @@ class Bot:
             return
         user_vk = vk_user_session.get_api()
         counter = user_vk.photos.getAlbums(owner_id="-209871225", album_ids="282103569")["items"][0]["size"]
-        sdvig = randint(0, counter-1)
-        photo_id = user_vk.photos.get(owner_id="-209871225", album_id="282103569", rev=True, count=1, offset=sdvig)["items"][0]["id"]
+        offset = datetime.today().microsecond % (counter - 1)
+        photo_id = user_vk.photos.get(owner_id="-209871225", album_id="282103569", rev=True, count=1, offset=offset)["items"][0]["id"]
         self.vk.messages.send(
             key=(self.params['key']),
             server=(self.params['server']),

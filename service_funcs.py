@@ -1,11 +1,16 @@
 from typing import Any
 from json import dumps, loads
+from datetime import datetime
 
 
 def auth_handler():
     key = input()
     remember_device = True
     return key, remember_device
+
+
+def my_random(right_border: int) -> int:
+    return datetime.today().microsecond % right_border
 
 
 def add_new_column_in_json(ind: int):

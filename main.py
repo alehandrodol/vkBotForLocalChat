@@ -305,6 +305,24 @@ class Bot:
             attachment=f"photo-209871225_{photo_id}"
         )
 
+    def start_vote(self, db: Session, event: VkBotMessageEvent, option: bool) -> None:
+        record_group: Group = db.query(Group).filter(Group.id == event.chat_id).first()
+        if record_group.active_vote:
+            self.send_message(chat_id=event.chat_id, text="Уже есть запущенное голосование!")
+            return
+        record_group.active_vote = True
+        moscow_zone = pytz.timezone("Europe/Moscow")
+        record_group.start_time = datetime.now(tz=moscow_zone)
+        record_group.votes_counter = 1
+        self.commit(db, record_group)
+        self.send_message(chat_id=event.chat_id,
+                          text=f"Началось голосование на {'+' if option else '-'}rep")
+
+    def hand_end_vote(self, db: Session, event: VkBotMessageEvent):
+        record_group: Group = db.query(Group).filter(Group.id == event.chat_id).first()
+        record_group.active_vote = False
+        self.send_message(chat_id=event.chat_id, text="Голосвание было отмененно.")
+
     def listen(self):
 
         longpoll = VkBotLongPoll(self.vk_session, 209871225)
@@ -362,7 +380,9 @@ class Bot:
                     elif message.lower() in pictures or re.fullmatch(r"о+р+", message.lower()):
                         self.send_picture(event=event)
                     elif re.fullmatch(r"\+rep \[id[\d]{8,10}|.*]", message.lower()):
-                        self.send_message(event.chat_id, text="НАЙС")
+                        self.start_vote(db=session, event=event, option=True)
+                    elif message.lower() == "отменить голосование" and event.message['from_id'] == 221767748:
+                        self.hand_end_vote(db=session, event=event)
                     elif message == 'команды':
                         text = ""
                         text += f"Выбор пидора дня: {', '.join(randoms)};\n " \

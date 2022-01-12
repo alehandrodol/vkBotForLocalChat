@@ -2,6 +2,8 @@ from typing import Any
 from json import dumps, loads
 from datetime import datetime
 
+import vk_api
+
 
 def auth_handler():
     key = input()
@@ -31,4 +33,4 @@ def add_new_column_in_json(ind: int):
 
 
 if __name__ == "__main__":
-    pass  # add_new_column_in_json(6)
+    pass

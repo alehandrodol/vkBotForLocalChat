@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Date, sql, ForeignKey
+from sqlalchemy import Column, Integer, String, Date, sql, ForeignKey, Boolean, DateTime
 from sqlalchemy.orm import relationship
 from core.database import Base
 
@@ -13,6 +13,9 @@ class Group(Base):
     pdr_date = Column(Date)
     year_pdr = Column(Integer)
     year_pdr_num = Column(Integer)
+    active_vote = Column(Boolean, default=False)
+    start_time = Column(DateTime(timezone=True))
+    votes_counter = Column(Integer)
 
 
 class User(Base):

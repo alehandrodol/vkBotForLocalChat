@@ -23,7 +23,7 @@ import re
 
 class Bot:
     def __init__(self):
-        #Base.metadata.drop_all(bind=engine)
+        Base.metadata.drop_all(bind=engine)
         # Tables creation
         Base.metadata.create_all(bind=engine)
 
@@ -47,7 +47,10 @@ class Bot:
                         who_is_fucked=line[3],
                         pdr_date=line[4],
                         year_pdr=line[5],
-                        year_pdr_num=line[6]
+                        year_pdr_num=line[6],
+                        active_vote=line[7],
+                        start_time=line[8],
+                        votes_counter=line[9]
                     )
                     self.commit(db=db, inst=record_group)
             db.close()
@@ -100,7 +103,10 @@ class Bot:
             today_pdr=None,
             who_is_fucked=None,
             year_pdr=None,
-            year_pdr_num=datetime.today().year
+            year_pdr_num=datetime.today().year,
+            active_vote=False,
+            start_time=None,
+            votes_counter=0
         )
         self.commit(db=db, inst=record_group)
         return record_group
@@ -308,6 +314,7 @@ class Bot:
             if event.type == VkBotEventType.MESSAGE_NEW:
                 session: Session = get_db()
                 message: str = event.message['text']
+                print(message)
                 randoms = ['рандом', 'кто пидор?', 'рандомчик', 'пидор дня', 'заролить']
                 year = ['годовалый', 'пидор года']
                 pdr_stats = ['титулы', 'кол-во пидоров', 'статистика титулы', 'статистика']
@@ -354,6 +361,8 @@ class Bot:
                         self.suka_all(session, event)
                     elif message.lower() in pictures or re.fullmatch(r"о+р+", message.lower()):
                         self.send_picture(event=event)
+                    elif re.fullmatch(r"\+rep \[id[\d]{8,10}|.*]", message.lower()):
+                        self.send_message(event.chat_id, text="НАЙС")
                     elif message == 'команды':
                         text = ""
                         text += f"Выбор пидора дня: {', '.join(randoms)};\n " \
@@ -363,7 +372,8 @@ class Bot:
                                 f"Хочешь чтоб тебя послали нахуй? Попробуй написать all;\n" \
                                 f"Чтобы узнать статистику только по тебе, используй 'моя статистика';\n" \
                                 f"Показать рейтинги участников: {', '.join(ratings)};\n" \
-                                f"Скинуть рандомную фотку из рофло альбома: {', '.join(pictures)}."
+                                f"Скинуть рандомную фотку из рофло альбома: {', '.join(pictures)};\n" \
+                                f"Запустить голосование на +- рейтинг: +rep или -rep, а дпльше нужно тегнуть человека."
 
                         self.send_message(event.chat_id,
                                           text=text)
@@ -372,4 +382,5 @@ class Bot:
 
 if __name__ == '__main__':
     bot = Bot()
+    print("ready")
     bot.listen()

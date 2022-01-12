@@ -294,7 +294,7 @@ class Bot:
             server=(self.params['server']),
             ts=(self.params['ts']),
             random_id=get_random_id(),
-            message="Смотри, что нашёл!",
+            message="",
             chat_id=event.chat_id,
             attachment=f"photo-209871225_{photo_id}"
         )

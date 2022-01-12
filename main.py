@@ -313,7 +313,7 @@ class Bot:
                 pdr_stats = ['титулы', 'кол-во пидоров', 'статистика титулы', 'статистика']
                 fucked_stats = ['статистика пассивных']
                 ratings = ['рейтинги', 'таблица', 'лидерборд']
-                pictures = ['пикчу', 'фотку', 'дай фотку', 'рофл', 'ор', 'хуичку']
+                pictures = ['пикчу', 'фотку', 'дай фотку', 'рофл', 'ор', 'хуикчу']
                 if event.from_chat:
                     if message.lower() in randoms:
                         record_group: Group = session.query(Group).filter(Group.id == event.chat_id).first()

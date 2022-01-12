@@ -2,7 +2,6 @@ import vk_api
 from vk_api.bot_longpoll import VkBotLongPoll, VkBotEventType, VkBotMessageEvent
 from vk_api.utils import get_random_id
 
-from random import choice, randint
 from service_funcs import auth_handler
 
 from core.Base import Base
@@ -79,10 +78,10 @@ class Bot:
 
     def get_random_user(self, users: list[dict]) -> tuple[list[dict], dict]:
         # Choosing random user from list
-        num = datetime.today().microsecond % (len(users)-1)
+        num = datetime.today().microsecond % len(users)
         user_id = users[num]['member_id']
         while user_id < 0:
-            num = datetime.today().microsecond % (len(users)-1)
+            num = datetime.today().microsecond % len(users)
             user_id = users[num]['member_id']
 
         users.pop(num)
@@ -262,7 +261,7 @@ class Bot:
         messages = [f"Я [id{event.message['from_id']}|тебе] сейчас allну по ебалу",
                     f"Ты чего охуел, [id{event.message['from_id']}|Пидор], блять???"]
         self.send_message(event.chat_id,
-                          text=choice(messages))
+                          text=messages[datetime.today().microsecond % len(messages)])
 
     def personal_stats(self, event: VkBotMessageEvent, db: Session) -> None:
         record_user: User = db.query(User). \
@@ -286,7 +285,7 @@ class Bot:
             return
         user_vk = vk_user_session.get_api()
         counter = user_vk.photos.getAlbums(owner_id="-209871225", album_ids="282103569")["items"][0]["size"]
-        offset = datetime.today().microsecond % (counter - 1)
+        offset = datetime.today().microsecond % counter
         photo_id = user_vk.photos.get(owner_id="-209871225", album_id="282103569", rev=True, count=1, offset=offset)["items"][0]["id"]
         self.vk.messages.send(
             key=(self.params['key']),
@@ -325,7 +324,7 @@ class Bot:
                                 json_dict: dict = loads(read)
 
                             if str(today) != json_dict['date']:
-                                phrase = choice(randoms)
+                                phrase = randoms[datetime.today().microsecond % len(randoms)]
                                 json_dict['date'] = str(today)
                                 json_dict['phrase'] = phrase
                                 with open("./DataBases/DayPhrase.json", 'w') as f:

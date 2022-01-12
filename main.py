@@ -180,6 +180,7 @@ class Bot:
             self.send_message(event.chat_id,
                               text=f"А трахает он - "
                                    f"[id{fucked['id']}|{fucked_temp['first_name']} {fucked_temp['last_name']}]")
+            self.send_picture(event=event)
 
     def statistics(self, db: Session, event: VkBotMessageEvent, option: int) -> None:
         record_group: Group = db.query(Group).filter(Group.id == event.chat_id).first()

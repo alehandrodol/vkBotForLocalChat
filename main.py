@@ -3,6 +3,7 @@ from vk_api.bot_longpoll import VkBotLongPoll, VkBotEventType, VkBotMessageEvent
 from vk_api.utils import get_random_id
 
 from random import choice, randint
+from service_funcs import auth_handler
 
 from core.Base import Base
 from core.database import engine, get_db
@@ -21,7 +22,7 @@ import pytz
 
 class Bot:
     def __init__(self):
-        Base.metadata.drop_all(bind=engine)
+        #Base.metadata.drop_all(bind=engine)
         # Tables creation
         Base.metadata.create_all(bind=engine)
 
@@ -273,6 +274,29 @@ class Bot:
                                f"Твой рейтинг сейчас: {record_user.rating}\n"
                                f"Кол-во титулов 'Пидор года': {record_user.pdr_of_the_year}")
 
+    def send_picture(self, event: VkBotMessageEvent) -> None:
+        login = "nik01042002@bk.ru"
+        password = "89067951555Prezrock"
+        vk_user_session = vk_api.VkApi(login, password, auth_handler=auth_handler)
+        try:
+            vk_user_session.auth()
+        except vk_api.AuthError as e:
+            print(e)
+            return
+        user_vk = vk_user_session.get_api()
+        counter = user_vk.photos.getAlbums(owner_id="-209871225", album_ids="282103569")["items"][0]["size"]
+        sdvig = randint(0, counter-1)
+        photo_id = user_vk.photos.get(owner_id="-209871225", album_id="282103569", rev=True, count=1, offset=sdvig)["items"][0]["id"]
+        self.vk.messages.send(
+            key=(self.params['key']),
+            server=(self.params['server']),
+            ts=(self.params['ts']),
+            random_id=get_random_id(),
+            message="Смотри, что нашёл!",
+            chat_id=event.chat_id,
+            attachment=f"photo-209871225_{photo_id}"
+        )
+
     def listen(self):
 
         longpoll = VkBotLongPoll(self.vk_session, 209871225)
@@ -326,6 +350,8 @@ class Bot:
                         self.statistics(db=session, event=event, option=3)
                     elif '@all' in message.lower():
                         self.suka_all(session, event)
+                    elif message.lower() in pictures:
+                        self.send_picture(event=event)
                     elif message == 'команды':
                         text = ""
                         text += f"Выбор пидора дня: {', '.join(randoms)};\n " \
@@ -334,7 +360,8 @@ class Bot:
                                 f"Показ статистики пассивных: {', '.join(fucked_stats)};\n" \
                                 f"Хочешь чтоб тебя послали нахуй? Попробуй написать all;\n" \
                                 f"Чтобы узнать статистику только по тебе, используй 'моя статистика';\n" \
-                                f"Показать рейтинги участников: {', '.join(ratings)}."
+                                f"Показать рейтинги участников: {', '.join(ratings)};\n" \
+                                f"Скинуть рандомную фотку из рофло альбома: {', '.join(pictures)}."
 
                         self.send_message(event.chat_id,
                                           text=text)

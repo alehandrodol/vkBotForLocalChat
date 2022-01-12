@@ -2,6 +2,12 @@ from typing import Any
 from json import dumps, loads
 
 
+def auth_handler():
+    key = input()
+    remember_device = True
+    return key, remember_device
+
+
 def add_new_column_in_json(ind: int):
     res = ""
     with open("DataBases/users_data.json", "r") as f:

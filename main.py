@@ -346,6 +346,12 @@ class Bot:
     def say_vote(self, db: Session, event: VkBotMessageEvent, option: bool) -> None:
         record_group: Group = db.query(Group).filter(Group.id == event.chat_id).first()
 
+        if record_group.active_vote == 0:
+            self.send_message(chat_id=event.chat_id,
+                              text=f"Сейчас нет активных голосований, но прошлое завершилось "
+                                   f"{'успешно' if record_group.votes_counter > 0 else 'не успешно'}")
+            return
+
         with open("./DataBases/users.json", 'r') as f:
             read = f.read()
             read_data: dict = loads(read)
@@ -355,15 +361,21 @@ class Bot:
             self.send_message(chat_id=event.chat_id,
                               text=f"[id{event.message['from_id']}|Вы], не можете голосовать.")
             return
-        li.remove(event.message["from_id"])
-        read_data[f"{event.chat_id}"] = li
 
-        if record_group.active_vote == 0:
-            return
+        moscow_zone = pytz.timezone("Europe/Moscow")
+        now = datetime.now(tz=moscow_zone)
+        is_time = (now - record_group.start_time.astimezone(moscow_zone)).seconds > 3600
+
+        if is_time:
+            self.auto_end_vote(db=db, event=event)
+
         if option:
             record_group.votes_counter += 1
         else:
             record_group.votes_counter -= 1
+
+        li.remove(event.message["from_id"])
+        read_data[f"{event.chat_id}"] = li
 
         with open("./DataBases/users.json", 'w') as f:
             dump(read_data, f)

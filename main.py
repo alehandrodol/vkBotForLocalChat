@@ -335,7 +335,7 @@ class Bot:
         self.commit(db, record_group)
 
         self.send_message(chat_id=event.chat_id,
-                          text=f"Началось голосование на {'+' if option else '-'}rep")
+                          text=f"@all Началось голосование на {'+' if option else '-'}rep")
 
     def hand_end_vote(self, db: Session, event: VkBotMessageEvent):
         record_group: Group = db.query(Group).filter(Group.id == event.chat_id).first()
@@ -477,10 +477,9 @@ class Bot:
                         self.suka_all(session, event)
                     elif message.lower() in pictures or re.fullmatch(r"о+р+", message.lower()):
                         self.send_picture(event=event)
-                    elif re.fullmatch(r'^\+rep\s\[id[\d]{8,10}\|.*]$', message.lower()):
-                        print(re.fullmatch(r'^\+rep\s\[id[\d]{8,10}\|.*]$', message.lower()).group(0))
+                    elif re.fullmatch(r'\+rep\s\[id[\d]{8,10}\|.*]', message.lower()):
                         self.start_vote(db=session, event=event, option=True)
-                    elif re.fullmatch(r'^-rep\s\[id[\d]{8,10}\|.*]$', message.lower()):
+                    elif re.fullmatch(r'-rep\s\[id[\d]{8,10}\|.*]', message.lower()):
                         self.start_vote(db=session, event=event, option=False)
                     elif message.lower() == "отменить голосование" and event.message['from_id'] == 221767748:
                         self.hand_end_vote(db=session, event=event)
@@ -500,7 +499,7 @@ class Bot:
                                 f"Чтобы узнать статистику только по тебе, используй 'моя статистика';\n" \
                                 f"Показать рейтинги участников: {', '.join(ratings)};\n" \
                                 f"Скинуть рандомную фотку из рофло альбома: {', '.join(pictures)};\n" \
-                                f"Запустить голосование на +- рейтинг: +rep или -rep, а дпльше нужно тегнуть человека."
+                                f"Запустить голосование на +- рейтинг: +rep или -rep, а дальше нужно тегнуть человека через пробел."
 
                         self.send_message(event.chat_id,
                                           text=text)

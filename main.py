@@ -352,6 +352,13 @@ class Bot:
                                    f"{'успешно' if record_group.votes_counter > 0 else 'не успешно'}")
             return
 
+        moscow_zone = pytz.timezone("Europe/Moscow")
+        now = datetime.now(tz=moscow_zone)
+        is_time = (now - record_group.start_time.astimezone(moscow_zone)).seconds > 3600
+
+        if is_time:
+            self.auto_end_vote(db=db, event=event)
+
         with open("./DataBases/users.json", 'r') as f:
             read = f.read()
             read_data: dict = loads(read)
@@ -361,13 +368,6 @@ class Bot:
             self.send_message(chat_id=event.chat_id,
                               text=f"[id{event.message['from_id']}|Вы], не можете голосовать.")
             return
-
-        moscow_zone = pytz.timezone("Europe/Moscow")
-        now = datetime.now(tz=moscow_zone)
-        is_time = (now - record_group.start_time.astimezone(moscow_zone)).seconds > 3600
-
-        if is_time:
-            self.auto_end_vote(db=db, event=event)
 
         if option:
             record_group.votes_counter += 1
@@ -395,7 +395,7 @@ class Bot:
             winner_record: User = db.query(User).filter(User.id == record_group.for_user_vote, User.chat_id == record_group.id).first()
             winner_record.rating += (50 if record_group.active_vote == 1 else -50)
             self.send_message(chat_id=event.chat_id,
-                              text=f"Голосование завершенно "
+                              text=f"Голосование завершено "
                                    f"{'по времени' if record_group.votes_counter < 7 else 'так как большенство, очевидно, ЗА'}.\n"
                                    f"[id{winner_record.id}|{winner_record.firstname}] "
                                    f"{'получил' if record_group.active_vote == 1 else 'потерял'} "

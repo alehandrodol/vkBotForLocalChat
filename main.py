@@ -50,7 +50,8 @@ class Bot:
                         year_pdr_num=line[6],
                         active_vote=line[7],
                         start_time=line[8],
-                        votes_counter=line[9]
+                        votes_counter=line[9],
+                        for_user_vote=line[10]
                     )
                     self.commit(db=db, inst=record_group)
             db.close()
@@ -104,9 +105,10 @@ class Bot:
             who_is_fucked=None,
             year_pdr=None,
             year_pdr_num=datetime.today().year,
-            active_vote=False,
+            active_vote=0,
             start_time=None,
-            votes_counter=0
+            votes_counter=0,
+            for_user_vote=None
         )
         self.commit(db=db, inst=record_group)
         return record_group
@@ -305,23 +307,120 @@ class Bot:
             attachment=f"photo-209871225_{photo_id}"
         )
 
-    def start_vote(self, db: Session, event: VkBotMessageEvent, option: bool) -> None:
+    def start_vote(self, db: Session, event: VkBotMessageEvent, option: int) -> None:
         record_group: Group = db.query(Group).filter(Group.id == event.chat_id).first()
-        if record_group.active_vote:
+
+        for_user = event.message["text"]
+        for_user = int(re.search(r'[\d]{8,10}', for_user).group(0))
+
+        if record_group.active_vote > 0:
             self.send_message(chat_id=event.chat_id, text="Уже есть запущенное голосование!")
             return
-        record_group.active_vote = True
+
+        with open("./DataBases/users.json", 'r') as f:
+            read = f.read()
+            read_data: dict = loads(read)
+
+        users = self.vk.messages.getConversationMembers(peer_id=event.message['peer_id'])
+        read_data[f"{event.chat_id}"] = [user['member_id'] for user in users['items'] if user['member_id'] > 0 and user['member_id'] != event.message['from_id'] and user['member_id'] != for_user]
+
+        with open("./DataBases/users.json", 'w') as f:
+            dump(read_data, f)
+
+        record_group.active_vote = 1 if option else 2
         moscow_zone = pytz.timezone("Europe/Moscow")
         record_group.start_time = datetime.now(tz=moscow_zone)
-        record_group.votes_counter = 1
+        record_group.votes_counter = 0
+        record_group.for_user_vote = for_user
         self.commit(db, record_group)
+
         self.send_message(chat_id=event.chat_id,
                           text=f"Началось голосование на {'+' if option else '-'}rep")
 
     def hand_end_vote(self, db: Session, event: VkBotMessageEvent):
         record_group: Group = db.query(Group).filter(Group.id == event.chat_id).first()
-        record_group.active_vote = False
+        record_group.active_vote = 0
+        self.commit(db=db, inst=record_group)
         self.send_message(chat_id=event.chat_id, text="Голосвание было отмененно.")
+
+    def say_vote(self, db: Session, event: VkBotMessageEvent, option: bool) -> None:
+        record_group: Group = db.query(Group).filter(Group.id == event.chat_id).first()
+
+        with open("./DataBases/users.json", 'r') as f:
+            read = f.read()
+            read_data: dict = loads(read)
+
+        li: list = read_data[f"{event.chat_id}"]
+        if event.message["from_id"] not in li:
+            self.send_message(chat_id=event.chat_id,
+                              text=f"[id{event.message['from_id']}|Вы], не можете голосовать.")
+            return
+        li.remove(event.message["from_id"])
+        read_data[f"{event.chat_id}"] = li
+
+        if record_group.active_vote == 0:
+            return
+        if option:
+            record_group.votes_counter += 1
+        else:
+            record_group.votes_counter -= 1
+
+        with open("./DataBases/users.json", 'w') as f:
+            dump(read_data, f)
+
+        self.commit(db, record_group)
+        self.send_message(chat_id=event.chat_id,
+                          text=f"[id{event.message['from_id']}|Твой] голос записан.")
+        if abs(record_group.votes_counter) >= 7:
+            self.auto_end_vote(db=db, event=event)
+
+    def auto_end_vote(self, db: Session, event: VkBotMessageEvent) -> None:
+        record_group: Group = db.query(Group).filter(Group.id == event.chat_id).first()
+        moscow_zone = pytz.timezone("Europe/Moscow")
+        now = datetime.now(tz=moscow_zone)
+        is_time = (now - record_group.start_time.astimezone(moscow_zone)).seconds > 3600
+        if record_group.votes_counter >= 7 or (is_time and record_group.votes_counter > 0):
+            winner_record: User = db.query(User).filter(User.id == record_group.for_user_vote, User.chat_id == record_group.id).first()
+            winner_record.rating += (50 if record_group.active_vote == 1 else -50)
+            self.send_message(chat_id=event.chat_id,
+                              text=f"Голосование завершенно "
+                                   f"{'по времени' if record_group.votes_counter < 7 else 'так как большенство, очевидно, ЗА'}.\n"
+                                   f"[id{winner_record.id}|{winner_record.firstname}] "
+                                   f"{'получил' if record_group.active_vote == 1 else 'потерял'} "
+                                   f"50 рейтинга.")
+            self.commit(db, winner_record)
+        elif record_group.votes_counter <= -7 or (is_time and record_group.votes_counter <= 0):
+
+            self.send_message(chat_id=event.chat_id,
+                              text=f"Голосование завершенно "
+                                   f"{'по времени, результат отрицательный' if record_group.votes_counter < 7 else 'так как большенство, очевидно, ПРОТИВ'}.")
+        record_group.active_vote = 0
+        self.commit(db, record_group)
+
+    def vote_check(self, db: Session, event: VkBotMessageEvent) -> None:
+        record_group: Group = db.query(Group).filter(Group.id == event.chat_id).first()
+
+        if record_group.active_vote == 0:
+            self.send_message(chat_id=event.chat_id,
+                              text=f"Сейчас нет активных голосований, но прошлое завершилось "
+                                   f"{'успешно' if record_group.votes_counter > 0 else 'не успешно'}")
+            return
+
+        moscow_zone = pytz.timezone("Europe/Moscow")
+        now = datetime.now(tz=moscow_zone)
+        is_time = (now - record_group.start_time.astimezone(moscow_zone)).seconds > 3600
+        if is_time:
+            self.auto_end_vote(db=db, event=event)
+        else:
+            record_user = db.query(User).filter(User.id == record_group.for_user_vote).first()
+            self.send_message(chat_id=event.chat_id,
+                              text=f"Текущее голосование за то, чтобы "
+                                   f"{'начислить' if record_group.active_vote == 1 else 'снять'} "
+                                   f"50 рейтинга у [id{record_user.id}|{record_user.firstname}].\n"
+                                   f"На данный момент перевес в "
+                                   f"{'положительную' if record_group.votes_counter > 0 else 'отрицательную'} "
+                                   f"сторону на {abs(record_group.votes_counter)}.\n"
+                                   f"Голосование закончится через {60 - ((now - record_group.start_time.astimezone(moscow_zone)).seconds // 60)} минут")
 
     def listen(self):
 
@@ -332,7 +431,6 @@ class Bot:
             if event.type == VkBotEventType.MESSAGE_NEW:
                 session: Session = get_db()
                 message: str = event.message['text']
-                print(message)
                 randoms = ['рандом', 'кто пидор?', 'рандомчик', 'пидор дня', 'заролить']
                 year = ['годовалый', 'пидор года']
                 pdr_stats = ['титулы', 'кол-во пидоров', 'статистика титулы', 'статистика']
@@ -379,10 +477,19 @@ class Bot:
                         self.suka_all(session, event)
                     elif message.lower() in pictures or re.fullmatch(r"о+р+", message.lower()):
                         self.send_picture(event=event)
-                    elif re.fullmatch(r"\+rep \[id[\d]{8,10}|.*]", message.lower()):
+                    elif re.fullmatch(r'^\+rep\s\[id[\d]{8,10}\|.*]$', message.lower()):
+                        print(re.fullmatch(r'^\+rep\s\[id[\d]{8,10}\|.*]$', message.lower()).group(0))
                         self.start_vote(db=session, event=event, option=True)
+                    elif re.fullmatch(r'^-rep\s\[id[\d]{8,10}\|.*]$', message.lower()):
+                        self.start_vote(db=session, event=event, option=False)
                     elif message.lower() == "отменить голосование" and event.message['from_id'] == 221767748:
                         self.hand_end_vote(db=session, event=event)
+                    elif message.lower() == "голос за":
+                        self.say_vote(db=session, event=event, option=True)
+                    elif message.lower() == "голос против":
+                        self.say_vote(db=session, event=event, option=False)
+                    elif message.lower() == "проверить голосование":
+                        self.vote_check(db=session, event=event)
                     elif message == 'команды':
                         text = ""
                         text += f"Выбор пидора дня: {', '.join(randoms)};\n " \
@@ -402,5 +509,4 @@ class Bot:
 
 if __name__ == '__main__':
     bot = Bot()
-    print("ready")
     bot.listen()

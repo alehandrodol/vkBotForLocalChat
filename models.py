@@ -13,9 +13,10 @@ class Group(Base):
     pdr_date = Column(Date)
     year_pdr = Column(Integer)
     year_pdr_num = Column(Integer)
-    active_vote = Column(Boolean, default=False)
-    start_time = Column(DateTime(timezone=True))
+    active_vote = Column(Integer, default=0)
+    start_time = Column(DateTime)
     votes_counter = Column(Integer)
+    for_user_vote = Column(Integer)
 
 
 class User(Base):

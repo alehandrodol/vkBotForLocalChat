@@ -23,7 +23,7 @@ import re
 
 class Bot:
     def __init__(self):
-        Base.metadata.drop_all(bind=engine)
+        #Base.metadata.drop_all(bind=engine)
         # Tables creation
         Base.metadata.create_all(bind=engine)
 

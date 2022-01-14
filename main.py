@@ -364,6 +364,8 @@ class Bot:
             read_data: dict = loads(read)
 
         li: list = read_data[f"{event.chat_id}"]
+        print(li)
+        print(event.message["from_id"])
         if event.message["from_id"] not in li:
             self.send_message(chat_id=event.chat_id,
                               text=f"[id{event.message['from_id']}|Вы], не можете голосовать.")
@@ -471,6 +473,7 @@ class Bot:
                                                   text=f"[id{event.message['from_id']}|Ты] сегодня счастливчик")
                                 self.random_pdr(db=session, event=event)
                             else:
+                                print(json_dict['phrase'])
                                 self.send_message(event.chat_id,
                                                   text=f"[id{event.message['from_id']}|Ты] не угадал сегодняшнюю фразу")
                         else:

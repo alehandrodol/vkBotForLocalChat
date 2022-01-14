@@ -468,12 +468,11 @@ class Bot:
                                 json_dict['phrase'] = phrase
                                 with open("./DataBases/DayPhrase.json", 'w') as f:
                                     dump(json_dict, f)
-                            if message == json_dict['phrase']:
+                            if message.lower() == json_dict['phrase']:
                                 self.send_message(event.chat_id,
                                                   text=f"[id{event.message['from_id']}|Ты] сегодня счастливчик")
                                 self.random_pdr(db=session, event=event)
                             else:
-                                print(json_dict['phrase'])
                                 self.send_message(event.chat_id,
                                                   text=f"[id{event.message['from_id']}|Ты] не угадал сегодняшнюю фразу")
                         else:
@@ -504,7 +503,7 @@ class Bot:
                         self.say_vote(db=session, event=event, option=False)
                     elif message.lower() == "проверить голосование":
                         self.vote_check(db=session, event=event)
-                    elif message == 'команды':
+                    elif message.lower() == 'команды':
                         text = ""
                         text += f"Выбор пидора дня: {', '.join(randoms)};\n " \
                                 f"Выбор пидора года: {', '.join(year)};\n" \

@@ -1,8 +1,10 @@
-from typing import Any
 from json import dumps, loads
+
 from datetime import datetime
 
-import vk_api
+from sqlalchemy.orm import Session
+
+from models import Group, User
 
 
 def auth_handler():
@@ -13,6 +15,16 @@ def auth_handler():
 
 def my_random(right_border: int) -> int:
     return datetime.today().microsecond % right_border
+
+
+def get_group_record(group_id: int, db: Session) -> Group:
+    record_group: Group = db.query(Group).filter(Group.id == group_id).first()
+    return record_group
+
+
+def get_user_record(user_id: int, group_id: int, db: Session) -> User:
+    record_user: User = db.query(User).filter(User.id == user_id, User.chat_id == group_id).first()
+    return record_user
 
 
 def add_new_column_in_json(ind: int):

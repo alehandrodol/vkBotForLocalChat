@@ -2,7 +2,7 @@ import vk_api
 from vk_api.bot_longpoll import VkBotLongPoll, VkBotEventType, VkBotMessageEvent
 from vk_api.utils import get_random_id
 
-from service_funcs import auth_handler, my_random
+from service_funcs import auth_handler, my_random, get_group_record, get_user_record
 
 from core.Base import Base
 from core.database import engine, get_db
@@ -61,7 +61,7 @@ class Bot:
             read = f.read()
             data_list = loads(read)['values']
             for line in data_list:
-                record_user: User = db.query(User).filter(User.id == line[0], User.chat_id == line[1]).first()
+                record_user: User = get_user_record(line[0], line[1], db)
                 if record_user is None:
                     record_user = User(
                         id=line[0],
@@ -137,7 +137,7 @@ class Bot:
         users, user = self.get_random_user(users['items'])
 
         # Getting record from table
-        record_group: Group = db.query(Group).filter(Group.id == event.chat_id).first()
+        record_group: Group = get_group_record(event.chat_id, db)
 
         moscow_zone = pytz.timezone("Europe/Moscow")
         # Check if we had already chosen pdr user today
@@ -152,7 +152,7 @@ class Bot:
                                    f"{fucked['first_name']} {fucked['last_name']}")
         # If not
         else:
-            launch_user: User = db.query(User).filter(User.id == event.message['from_id']).first()
+            launch_user: User = get_user_record(event.message['from_id'], event.chat_id, db)
             launch_user.rating += 25
             self.commit(db, launch_user)
 
@@ -164,12 +164,11 @@ class Bot:
             record_group.who_is_fucked = fucked['id']
             self.commit(db=db, inst=record_group)
 
-            record_user: User = db.query(User).filter(User.id == user['id'], User.chat_id == event.chat_id).first()
+            record_user: User = get_user_record(user['id'], event.chat_id, db)
             if record_user is None:
                 record_user = self.make_empty_record_in_users(event=event, db=db, user_id=user['id'])
 
-            record_fucked: User = db.query(User).filter(
-                User.id == fucked['id'], User.chat_id == event.chat_id).first()
+            record_fucked: User = get_user_record(fucked['id'], event.chat_id, db)
             if record_fucked is None:
                 record_fucked = self.make_empty_record_in_users(event=event, db=db, user_id=fucked['id'])
             record_fucked.fucked += 1
@@ -189,7 +188,7 @@ class Bot:
             self.send_picture(event=event)
 
     def statistics(self, db: Session, event: VkBotMessageEvent, option: int) -> None:
-        record_group: Group = db.query(Group).filter(Group.id == event.chat_id).first()
+        record_group: Group = get_group_record(event.chat_id, db)
         if record_group is None:
             self.make_empty_record_in_groups(event=event, db=db)
         if option == 1:
@@ -229,7 +228,7 @@ class Bot:
         self.send_message(chat_id=event.chat_id, text=text)
 
     def pdr_of_the_year(self, db: Session, event: VkBotMessageEvent) -> None:
-        record_group: Group = db.query(Group).filter(Group.id == event.chat_id).first()
+        record_group: Group = get_group_record(event.chat_id, db)
         if record_group is None:
             record_group = self.make_empty_record_in_groups(event=event, db=db)
         if record_group.year_pdr is not None and datetime.today().year == record_group.year_pdr_num:
@@ -241,7 +240,7 @@ class Bot:
             users = self.vk.messages.getConversationMembers(peer_id=event.message['peer_id'])
 
             users, user = self.get_random_user(users['items'])
-            record_user: User = db.query(User).filter(User.id == user['id'], User.chat_id == event.chat_id).first()
+            record_user: User = get_user_record(user['id'], event.chat_id, db)
             record_user.rating += 2000
             record_user.pdr_of_the_year += 1
             record_group.year_pdr = user['id']
@@ -262,7 +261,7 @@ class Bot:
         )
 
     def suka_all(self, db: Session, event: VkBotMessageEvent) -> None:
-        launch_user: User = db.query(User).filter(User.id == event.message['from_id']).first()
+        launch_user: User = get_user_record(event.message['from_id'], event.chat_id, db)
         launch_user.rating -= 5
         self.commit(db, launch_user)
         messages = [f"Я [id{event.message['from_id']}|тебе] сейчас allну по ебалу",
@@ -305,7 +304,7 @@ class Bot:
         )
 
     def start_vote(self, db: Session, event: VkBotMessageEvent, option: int) -> None:
-        record_group: Group = db.query(Group).filter(Group.id == event.chat_id).first()
+        record_group: Group = get_group_record(event.chat_id, db)
 
         for_user = event.message["text"]
         for_user = int(re.search(r'[\d]{8,10}', for_user).group(0))
@@ -335,13 +334,13 @@ class Bot:
                           text=f"@all Началось голосование на {'+' if option else '-'}rep")
 
     def hand_end_vote(self, db: Session, event: VkBotMessageEvent):
-        record_group: Group = db.query(Group).filter(Group.id == event.chat_id).first()
+        record_group: Group = get_group_record(event.chat_id, db)
         record_group.active_vote = 0
         self.commit(db=db, inst=record_group)
         self.send_message(chat_id=event.chat_id, text="Голосвание было отмененно.")
 
     def say_vote(self, db: Session, event: VkBotMessageEvent, option: bool) -> None:
-        record_group: Group = db.query(Group).filter(Group.id == event.chat_id).first()
+        record_group: Group = get_group_record(event.chat_id, db)
 
         if record_group.active_vote == 0:
             self.send_message(chat_id=event.chat_id,
@@ -386,12 +385,12 @@ class Bot:
             self.auto_end_vote(db=db, event=event)
 
     def auto_end_vote(self, db: Session, event: VkBotMessageEvent) -> None:
-        record_group: Group = db.query(Group).filter(Group.id == event.chat_id).first()
+        record_group: Group = get_group_record(event.chat_id, db)
         moscow_zone = pytz.timezone("Europe/Moscow")
         now = datetime.now(tz=moscow_zone)
         is_time = (now - record_group.start_time.astimezone(moscow_zone)).seconds > 3600
         if record_group.votes_counter >= 7 or (is_time and record_group.votes_counter > 0):
-            winner_record: User = db.query(User).filter(User.id == record_group.for_user_vote, User.chat_id == record_group.id).first()
+            winner_record: User = get_user_record(record_group.for_user_vote, record_group.id, db)
             winner_record.rating += (50 if record_group.active_vote == 1 else -50)
             self.send_message(chat_id=event.chat_id,
                               text=f"Голосование завершено "
@@ -409,7 +408,7 @@ class Bot:
         self.commit(db, record_group)
 
     def vote_check(self, db: Session, event: VkBotMessageEvent) -> None:
-        record_group: Group = db.query(Group).filter(Group.id == event.chat_id).first()
+        record_group: Group = get_group_record(event.chat_id, db)
 
         if record_group.active_vote == 0:
             self.send_message(chat_id=event.chat_id,
@@ -423,7 +422,7 @@ class Bot:
         if is_time:
             self.auto_end_vote(db=db, event=event)
         else:
-            record_user = db.query(User).filter(User.id == record_group.for_user_vote).first()
+            record_user = get_user_record(record_group.for_user_vote, record_group.id, db)
             self.send_message(chat_id=event.chat_id,
                               text=f"Текущее голосование за то, чтобы "
                                    f"{'начислить' if record_group.active_vote == 1 else 'снять'} "
@@ -440,15 +439,17 @@ class Bot:
         # listen for events
         for event in longpoll.listen():
             if event.type == VkBotEventType.MESSAGE_NEW:
-                session: Session = get_db()
-                message: str = event.message['text']
-                randoms = ['рандом', 'кто пидор?', 'рандомчик', 'пидор дня', 'заролить']
-                year = ['годовалый', 'пидор года']
-                pdr_stats = ['титулы', 'кол-во пидоров', 'статистика титулы', 'статистика']
-                fucked_stats = ['статистика пассивных']
-                ratings = ['рейтинги', 'таблица', 'лидерборд']
-                pictures = ['пикчу', 'фотку', 'дай фотку', 'рофл', 'ор', 'хуикчу']
                 if event.from_chat:
+
+                    session: Session = get_db()
+                    message: str = event.message['text']
+                    randoms = ['рандом', 'кто пидор?', 'рандомчик', 'пидор дня', 'заролить']
+                    year = ['годовалый', 'пидор года']
+                    pdr_stats = ['титулы', 'кол-во пидоров', 'статистика титулы', 'статистика']
+                    fucked_stats = ['статистика пассивных']
+                    ratings = ['рейтинги', 'таблица', 'лидерборд']
+                    pictures = ['пикчу', 'фотку', 'дай фотку', 'рофл', 'ор', 'хуикчу']
+
                     if message.lower() in randoms:
                         record_group: Group = session.query(Group).filter(Group.id == event.chat_id).first()
 
@@ -535,7 +536,7 @@ class Bot:
                         print(f"Выполнил команду {message.lower()} от {event.message['from_id']} в чате {event.chat_id}")
                         self.send_message(event.chat_id,
                                           text=text)
-                session.close()
+                    session.close()
 
 
 if __name__ == '__main__':

@@ -18,6 +18,14 @@ class Group(Base):
     votes_counter = Column(Integer)
     for_user_vote = Column(Integer)
 
+    def __str__(self) -> str:
+        return f"Instanse from table groups:\n" \
+               f"id: {self.id}; name: {self.name}, today_pdr: {self.today_pdr}, who_is_fucked: {self.who_is_fucked}, " \
+               f"pdr_date: {self.pdr_date},\nyear_pdr: {self.year_pdr}, year_pdr_num: {self.year_pdr_num},\n" \
+               f"active_vote: {self.active_vote}, start_time: {self.start_time}, votes_counter: {self.votes_counter}, "\
+               f"for_user_votes: {self.for_user_vote}.\n" \
+               f"----------------------------------------------------------------------------------------------------\n"
+
 
 class User(Base):
     __tablename__ = "users"
@@ -31,3 +39,10 @@ class User(Base):
     rating = Column(Integer)
     pdr_of_the_year = Column(Integer)
     group = relationship(Group)
+
+    def __str__(self) -> str:
+        return f"Instanse from table users:\n" \
+               f"id: {self.id}, chat_id: {self.chat_id}, firstname: {self.firstname}, lastname: {self.lastname},\n" \
+               f"pdr_num: {self.pdr_num}, fucked: {self.fucked}, rating: {self.rating}, " \
+               f"pdr_of_the_year: {self.pdr_of_the_year}.\n" \
+               f"---------------------------------------------------------------------------------------------------\n"

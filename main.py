@@ -23,7 +23,7 @@ import re
 
 class Bot:
     def __init__(self):
-        #Base.metadata.drop_all(bind=engine)
+        # Base.metadata.drop_all(bind=engine)
         # Tables creation
         Base.metadata.create_all(bind=engine)
 
@@ -78,6 +78,7 @@ class Bot:
 
     @staticmethod
     def commit(db: Session, inst: Union[Group, User]):
+        print("Загружаю в базу вот такую строчку:", str(inst))
         db.add(inst)
         db.commit()
         db.refresh(inst)
@@ -137,10 +138,6 @@ class Bot:
 
         # Getting record from table
         record_group: Group = db.query(Group).filter(Group.id == event.chat_id).first()
-
-        # Is record exist
-        if record_group is None:  # Make record if not
-            record_group = self.make_empty_record_in_groups(event=event, db=db)
 
         moscow_zone = pytz.timezone("Europe/Moscow")
         # Check if we had already chosen pdr user today
@@ -364,8 +361,8 @@ class Bot:
             read_data: dict = loads(read)
 
         li: list = read_data[f"{event.chat_id}"]
-        print(li)
-        print(event.message["from_id"])
+        print("Список доступных на голосование", li)
+        print("Кто проголосовал", event.message["from_id"])
         if event.message["from_id"] not in li:
             self.send_message(chat_id=event.chat_id,
                               text=f"[id{event.message['from_id']}|Вы], не можете голосовать.")
@@ -454,6 +451,11 @@ class Bot:
                 if event.from_chat:
                     if message.lower() in randoms:
                         record_group: Group = session.query(Group).filter(Group.id == event.chat_id).first()
+
+                        # Is record exist
+                        if record_group is None:  # Make record if not
+                            record_group = self.make_empty_record_in_groups(event=event, db=session)
+
                         moscow_zone = pytz.timezone("Europe/Moscow")
                         # Check if we had already chosen pdr user today
                         today = datetime.now(tz=moscow_zone).date()
@@ -477,32 +479,46 @@ class Bot:
                                                   text=f"[id{event.message['from_id']}|Ты] не угадал сегодняшнюю фразу")
                         else:
                             self.random_pdr(db=session, event=event)
+                        print(f"Выполнил команду {message.lower()} от {event.message['from_id']} в чате {event.chat_id}")
                     elif message.lower() in year:
                         self.pdr_of_the_year(db=session, event=event)
+                        print(f"Выполнил команду {message.lower()} от {event.message['from_id']} в чате {event.chat_id}")
                     elif message.lower() in pdr_stats:
                         self.statistics(db=session, event=event, option=1)
+                        print(f"Выполнил команду {message.lower()} от {event.message['from_id']} в чате {event.chat_id}")
                     elif message.lower() == "моя статистика":
                         self.personal_stats(event=event, db=session)
+                        print(f"Выполнил команду {message.lower()} от {event.message['from_id']} в чате {event.chat_id}")
                     elif message.lower() in fucked_stats:
                         self.statistics(db=session, event=event, option=2)
+                        print(f"Выполнил команду {message.lower()} от {event.message['from_id']} в чате {event.chat_id}")
                     elif message.lower() in ratings:
                         self.statistics(db=session, event=event, option=3)
+                        print(f"Выполнил команду {message.lower()} от {event.message['from_id']} в чате {event.chat_id}")
                     elif '@all' in message.lower():
                         self.suka_all(session, event)
+                        print(f"Выполнил команду {message.lower()} от {event.message['from_id']} в чате {event.chat_id}")
                     elif message.lower() in pictures or re.fullmatch(r"о+р+", message.lower()):
                         self.send_picture(event=event)
+                        print(f"Выполнил команду {message.lower()} от {event.message['from_id']} в чате {event.chat_id}")
                     elif re.fullmatch(r'\+rep\s\[id[\d]{8,10}\|.*]', message.lower()):
                         self.start_vote(db=session, event=event, option=True)
+                        print(f"Выполнил команду {message.lower()} от {event.message['from_id']} в чате {event.chat_id}")
                     elif re.fullmatch(r'-rep\s\[id[\d]{8,10}\|.*]', message.lower()):
                         self.start_vote(db=session, event=event, option=False)
+                        print(f"Выполнил команду {message.lower()} от {event.message['from_id']} в чате {event.chat_id}")
                     elif message.lower() == "отменить голосование" and event.message['from_id'] == 221767748:
                         self.hand_end_vote(db=session, event=event)
+                        print(f"Выполнил команду {message.lower()} от {event.message['from_id']} в чате {event.chat_id}")
                     elif message.lower() == "голос за":
                         self.say_vote(db=session, event=event, option=True)
+                        print(f"Выполнил команду {message.lower()} от {event.message['from_id']} в чате {event.chat_id}")
                     elif message.lower() == "голос против":
                         self.say_vote(db=session, event=event, option=False)
+                        print(f"Выполнил команду {message.lower()} от {event.message['from_id']} в чате {event.chat_id}")
                     elif message.lower() == "проверить голосование":
                         self.vote_check(db=session, event=event)
+                        print(f"Выполнил команду {message.lower()} от {event.message['from_id']} в чате {event.chat_id}")
                     elif message.lower() == 'команды':
                         text = ""
                         text += f"Выбор пидора дня: {', '.join(randoms)};\n " \
@@ -516,7 +532,7 @@ class Bot:
                                 f"Запустить голосование на +- рейтинг: +rep или -rep, " \
                                 f"а дальше нужно тегнуть человека через пробел, во время голосования, есть 3 команды:" \
                                 f"'голос за', 'голос против' и 'проверить голосование'."
-
+                        print(f"Выполнил команду {message.lower()} от {event.message['from_id']} в чате {event.chat_id}")
                         self.send_message(event.chat_id,
                                           text=text)
                 session.close()
@@ -524,4 +540,5 @@ class Bot:
 
 if __name__ == '__main__':
     bot = Bot()
+    print("Бот запущен")
     bot.listen()

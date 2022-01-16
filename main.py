@@ -1,5 +1,7 @@
 import re
 import vk_api
+import os
+
 from vk_api.bot_longpoll import VkBotLongPoll, VkBotEventType, VkBotMessageEvent
 from vk_api.utils import get_random_id
 
@@ -30,7 +32,7 @@ class Bot:
 
         # Auth
         self.vk_session = vk_api.VkApi(
-            token='da1624cd3e67c479150a5d2765871036cb4ead83631e03c57a7d288b26f4517a53615a3700012cad2a0b1')
+            token=os.environ.get("GROUP_TOKEN"))
         self.vk = self.vk_session.get_api()
         self.params = self.vk.groups.getLongPollServer(group_id=209871225)
 
@@ -40,7 +42,7 @@ class Bot:
             read = f.read()
             data_list = loads(read)['values']
             for line in data_list:
-                record_group: Group = db.query(Group).filter(Group.id == line[0]).first()
+                record_group: Group = get_group_record(line[0], db)
                 if record_group is None:
                     record_group = Group(
                         id=line[0],
@@ -337,8 +339,7 @@ class Bot:
 
     def personal_stats(self, event: VkBotMessageEvent, db: Session) -> None:
         """Just take information from DB and distribute on the message text"""
-        record_user: User = db.query(User). \
-            filter(User.id == event.message['from_id'], User.chat_id == event.chat_id).first()
+        record_user: User = get_user_record(event.message['from_id'], event.chat_id, db)
         self.send_message(chat_id=event.chat_id,
                           text=f"[id{record_user.id}|Ты] был титулован {record_user.pdr_num} "
                                f"{'раза' if record_user.id % 10 in [2, 3, 4] and record_user.id not in [12, 13, 14] else 'раз'} "
@@ -355,8 +356,8 @@ class Bot:
         and last action is taking photo id
         :return None (instead of return message in chat)
         """
-        login = "nik01042002@bk.ru"
-        password = "89067951555Prezrock"
+        login = os.environ.get("USER_LOGIN")
+        password = os.environ.get("USER_PASS")
         vk_user_session = vk_api.VkApi(login, password, auth_handler=auth_handler)
         try:
             vk_user_session.auth()

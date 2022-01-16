@@ -5,6 +5,9 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 
 from models import Group, User
+from schemas import VkUser, VkMessage
+
+from pydantic import ValidationError
 
 
 def auth_handler():
@@ -25,6 +28,26 @@ def get_group_record(group_id: int, db: Session) -> Group:
 def get_user_record(user_id: int, group_id: int, db: Session) -> User:
     record_user: User = db.query(User).filter(User.id == user_id, User.chat_id == group_id).first()
     return record_user
+
+
+def make_vk_user_schema(user: dict) -> VkUser:
+    user = dumps(user)
+    try:
+        user = VkUser.parse_raw(user)
+    except ValidationError as e:
+        print(e.json())
+        raise e
+    return user
+
+
+def make_vk_message_schema(message: dict) -> VkMessage:
+    message = dumps(message)
+    try:
+        message = VkMessage.parse_raw(message)
+    except ValidationError as e:
+        print(e.json())
+        raise e
+    return message
 
 
 def add_new_column_in_json(ind: int):

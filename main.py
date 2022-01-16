@@ -389,9 +389,16 @@ class Bot:
         :param event: VkBotMessageEvent
         :param option: This param defines + or - rating vote we are doing now
         """
-        message: VkMessage = make_vk_message_schema(event.message)
-
         record_group: Group = get_group_record(event.chat_id, db)
+
+        # This block for checking is voting ended or not
+        moscow_zone = pytz.timezone("Europe/Moscow")
+        now = datetime.now(tz=moscow_zone)
+        is_time = (now - record_group.start_time.astimezone(moscow_zone)).seconds > 3600
+        if is_time:
+            self.auto_end_vote(db=db, event=event)
+
+        message: VkMessage = make_vk_message_schema(event.message)
 
         # This block for taking user id from message
         for_user = message.text
@@ -450,6 +457,7 @@ class Bot:
         is_time = (now - record_group.start_time.astimezone(moscow_zone)).seconds > 3600
         if is_time:
             self.auto_end_vote(db=db, event=event)
+            return
 
         with open("./DataBases/users.json", 'r') as f:
             read = f.read()

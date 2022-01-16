@@ -6,12 +6,12 @@ from vk_api.bot_longpoll import VkBotLongPoll, VkBotEventType, VkBotMessageEvent
 from vk_api.utils import get_random_id
 
 from service_funcs import auth_handler, my_random, get_group_record, get_user_record, make_vk_user_schema, \
-    make_vk_message_schema
+    make_vk_message_schema, get_achieve_record
 
 from core.Base import Base
 from core.database import engine, get_db
 
-from models import Group, User
+from models import Group, User, Achieves
 from schemas import VkUser, VkMessage
 
 from sqlalchemy.orm import Session
@@ -26,18 +26,18 @@ from json import loads, dump
 
 class Bot:
     def __init__(self):  # Bot start
-        # Base.metadata.drop_all(bind=engine)
+        Base.metadata.drop_all(bind=engine)
         # Tables creation
         Base.metadata.create_all(bind=engine)
 
         # Auth
         self.vk_session = vk_api.VkApi(
-            token=os.environ.get("GROUP_TOKEN"))
+            token="da1624cd3e67c479150a5d2765871036cb4ead83631e03c57a7d288b26f4517a53615a3700012cad2a0b1")#os.environ.get("GROUP_TOKEN"))
         self.vk = self.vk_session.get_api()
         self.params = self.vk.groups.getLongPollServer(group_id=209871225)
 
         '''Two blocks of with is wor changing or creation data from json files'''
-        with open("./DataBases/groups_data.json", 'r') as f:
+        with open("./DataBases/groups_data.json", 'r', encoding="utf8") as f:
             db: Session = get_db()
             read = f.read()
             data_list = loads(read)['values']
@@ -60,7 +60,7 @@ class Bot:
                     self.commit(db=db, inst=record_group)
             db.close()
 
-        with open("./DataBases/users_data.json", 'r') as f:
+        with open("./DataBases/users_data.json", 'r', encoding="utf8") as f:
             db: Session = get_db()
             read = f.read()
             data_list = loads(read)['values']
@@ -78,6 +78,25 @@ class Bot:
                         pdr_of_the_year=line[7]
                     )
                     self.commit(db=db, inst=record_user)
+            db.close()
+
+        with open("./DataBases/achieves_data.json", 'r', encoding="utf8") as f:
+            db: Session = get_db()
+            read = f.read()
+            data_list = loads(read)['values']
+            for line in data_list:
+                record_achieve: Achieves = get_achieve_record(line[0], db)
+                if record_achieve is None:
+                    record_achieve = Achieves(
+                        id=line[0],
+                        name=line[1],
+                        points=line[2],
+                        is_available=line[3],
+                        needed_repeats=line[4],
+                        day_count_reachieve=line[5],
+                        secs_to_reseting=line[6],
+                    )
+                    self.commit(db=db, inst=record_achieve)
             db.close()
 
     @staticmethod
@@ -356,8 +375,8 @@ class Bot:
         and last action is taking photo id
         :return None (instead of return message in chat)
         """
-        login = os.environ.get("USER_LOGIN")
-        password = os.environ.get("USER_PASS")
+        login = "nik01042002@bk.ru"#os.environ.get("USER_LOGIN")
+        password = "89067951555Prezrock"#os.environ.get("USER_PASS")
         vk_user_session = vk_api.VkApi(login, password, auth_handler=auth_handler)
         try:
             vk_user_session.auth()

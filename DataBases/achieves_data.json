@@ -1,0 +1,9 @@
+{
+  "values": [
+    [1, "two days row", 100, true, 2, null, 86400],
+    [2, "launcing", 50, true, 3, null, 86400],
+    [3, "double personal stats", 25, true, 2, null, 3600],
+    [4, "tag day pdr", 50, true, 1, null, null],
+    [5, "lucky num", 50, true, 1, 30, null]
+  ]
+}

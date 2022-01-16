@@ -45,4 +45,42 @@ class User(Base):
                f"id: {self.id}, chat_id: {self.chat_id}, firstname: {self.firstname}, lastname: {self.lastname},\n" \
                f"pdr_num: {self.pdr_num}, fucked: {self.fucked}, rating: {self.rating}, " \
                f"pdr_of_the_year: {self.pdr_of_the_year}.\n" \
-               f"---------------------------------------------------------------------------------------------------\n"
+               f"----------------------------------------------------------------------------------------------------\n"
+
+
+class Achieves(Base):
+    __tablename__ = "achieves"
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String)
+    points = Column(Integer)
+    is_available = Column(Boolean)
+    needed_repeats = Column(Integer)
+    day_count_reachieve = Column(Integer)
+    secs_to_reseting = Column(Integer)
+
+    def __str__(self) -> str:
+        return f"Instance from table achieves:\n" \
+               f"id: {self.id}, name: {self.name}, points: {self.points}, is_available: {self.is_available},\n" \
+               f"needed_repeats: {self.needed_repeats}, day_count_reachieve: {self.day_count_reachieve}," \
+               f"secs_to_reseting: {self.secs_to_reseting}.\n" \
+               f"----------------------------------------------------------------------------------------------------\n"
+
+
+class UserAchieve(Base):
+    __tablename__ = "users_achieves"
+
+    user_id = Column(Integer, primary_key=True)
+    achieve_id = Column(Integer, primary_key=True, unique=False)
+    last_date = Column(Date)
+    current_repeats = Column(Integer)
+    is_got = Column(Boolean)
+    reachieve_date = Column(Date)
+    got_times = Column(Integer)
+
+    def __str__(self) -> str:
+        return f"Instance from table users_achieves:\n" \
+               f"user_id: {self.user_id}, achieve_id: {self.achieve_id}, last_date: {self.last_date},\n" \
+               f"current_repeats: {self.current_repeats}, is_got: {self.is_got}, \n" \
+               f"reachieve_date: {self.reachieve_date}, got_times: {self.got_times}.\n" \
+               f"----------------------------------------------------------------------------------------------------\n"

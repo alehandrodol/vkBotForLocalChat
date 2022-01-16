@@ -99,7 +99,7 @@ class Bot:
                     self.commit(db=db, inst=record_achieve)
             db.close()
 
-        with open("./DataBases/Users_Achieves_data.json.json", 'r', encoding="utf8") as f:
+        with open("./DataBases/Users_Achieves_data.json", 'r', encoding="utf8") as f:
             db: Session = get_db()
             read = f.read()
             data_list = loads(read)['values']

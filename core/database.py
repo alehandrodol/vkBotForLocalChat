@@ -4,7 +4,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
 #SQLALCHEMY_DATABASE_URL = os.environ.get("LOCAL_DB_URL")
-SQLALCHEMY_DATABASE_URL = "postgresql://uncrmqmakbcslr:c781a0fb47f5e832591bb83d2ca0322a929316ae94e98297343d8ac9805f3337@ec2-34-249-49-9.eu-west-1.compute.amazonaws.com:5432/dd7qgns69c3tnf"#os.environ.get("REAL_DATABASE_URL")
+SQLALCHEMY_DATABASE_URL = os.environ.get("REAL_DATABASE_URL")
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL
 )

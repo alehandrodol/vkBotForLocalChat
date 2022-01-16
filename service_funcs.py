@@ -4,7 +4,7 @@ from datetime import datetime
 
 from sqlalchemy.orm import Session
 
-from models import Group, User, Achieves
+from models import Group, User, Achieves, UserAchieve
 from schemas import VkUser, VkMessage
 
 from pydantic import ValidationError
@@ -33,6 +33,13 @@ def get_user_record(user_id: int, group_id: int, db: Session) -> User:
 def get_achieve_record(achieve_id: int, db: Session) -> Achieves:
     record_achieve: Achieves = db.query(Achieves).filter(Achieves.id == achieve_id).first()
     return record_achieve
+
+
+def get_user_achieve_record(user_id: int, achieve_id: int, chat_id: int, db: Session) -> UserAchieve:
+    record_user_achieve: UserAchieve = db.query(UserAchieve).filter(UserAchieve.user_id == user_id,
+                                                                    UserAchieve.achieve_id == achieve_id,
+                                                                    UserAchieve.chat_id == chat_id).first()
+    return record_user_achieve
 
 
 def make_vk_user_schema(user: dict) -> VkUser:

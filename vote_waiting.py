@@ -58,25 +58,18 @@ def auto_end_vote(db: Session, group_id: int, params: dict, vk) -> None:
 
 
 def wait(group_id: int):
-    db: Session = get_db()
-    print("всё норм")
+
     vk_session = vk_api.VkApi(
         token=os.environ.get("GROUP_TOKEN"))
     vk = vk_session.get_api()
     params = vk.groups.getLongPollServer(group_id=209871225)
 
-    moscow_zone = pytz.timezone("Europe/Moscow")
-    record_group: Group = get_group_record(group_id, db)
+    sleep(55)
 
+    db: Session = get_db()
+    auto_end_vote(db=db, group_id=group_id, params=params, vk=vk)
     db.close()
-    while True:
-        now = datetime.now(tz=moscow_zone)
-        is_time = (now - record_group.start_time.astimezone(moscow_zone)).seconds > 50
-        if is_time:
-            db: Session = get_db()
-            auto_end_vote(db=db, group_id=group_id, params=params, vk=vk)
-            db.close()
-            break
+    return
 
 
 if __name__ == "__main__":

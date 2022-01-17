@@ -18,6 +18,10 @@ from core.database import get_db
 def auto_end_vote(db: Session, group_id: int, params: dict, vk) -> None:
     """This func ends voting"""
     record_group: Group = get_group_record(group_id, db)
+
+    if record_group.active_vote == 0:
+        return
+
     moscow_zone = pytz.timezone("Europe/Moscow")
     now = datetime.now(tz=moscow_zone)
     is_time = (now - record_group.start_time.astimezone(moscow_zone)).seconds > 50  # 3600 is 1 hour by secs

@@ -26,7 +26,7 @@ from typing import List
 
 from json import loads, dump
 
-from subprocess import run
+from subprocess import Popen, PIPE
 
 
 class Bot:
@@ -494,7 +494,8 @@ class Bot:
         record_group.for_user_vote = for_user
         commit(db, record_group)
 
-        run([sys.executable, "vote_waiting.py"], input=(f"{event.chat_id}".encode('utf-8')))
+        p = Popen([sys.executable, "vote_waiting.py"], stdin=PIPE, text=True, encoding="utf-8")
+        p.communicate(input=f"{event.chat_id}")
 
         self.send_message(chat_id=event.chat_id,
                           text=f"@all Началось голосование на {'+' if option else '-'}rep")

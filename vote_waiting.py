@@ -16,3 +16,7 @@ def listen():
         if event.type == VkBotEventType.MESSAGE_NEW:
             if event.message['text'].lower() == "тест":
                 print("найс")
+
+
+if __name__ == "__main__":
+    listen()

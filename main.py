@@ -7,8 +7,9 @@ import os
 from vk_api.bot_longpoll import VkBotLongPoll, VkBotEventType, VkBotMessageEvent
 from vk_api.utils import get_random_id
 
-from service_funcs import auth_handler, my_random, get_group_record, get_user_record, make_vk_user_schema, \
-    make_vk_message_schema, get_achieve_record, get_user_achieve_record, user_api
+from service_funcs import my_random, get_group_record, get_user_record, make_vk_user_schema, \
+    make_vk_message_schema, get_achieve_record, get_user_achieve_record, user_api, commit
+from vote_waiting import auto_end_vote
 
 from core.Base import Base
 from core.database import engine, get_db
@@ -21,11 +22,11 @@ from sqlalchemy.orm import Session
 import pytz
 from datetime import datetime
 
-from typing import Union, List
+from typing import List
 
 from json import loads, dump
 
-from subprocess import Popen
+from subprocess import run
 
 
 class Bot:
@@ -61,7 +62,7 @@ class Bot:
                         votes_counter=line[9],
                         for_user_vote=line[10]
                     )
-                    self.commit(db=db, inst=record_group)
+                    commit(db=db, inst=record_group)
             db.close()
 
         with open("./DataBases/users_data.json", 'r', encoding="utf8") as f:
@@ -81,7 +82,7 @@ class Bot:
                         rating=line[6],
                         pdr_of_the_year=line[7]
                     )
-                    self.commit(db=db, inst=record_user)
+                    commit(db=db, inst=record_user)
             db.close()
 
         with open("./DataBases/achieves_data.json", 'r', encoding="utf8") as f:
@@ -100,7 +101,7 @@ class Bot:
                         day_count_reachieve=line[5],
                         secs_to_reseting=line[6],
                     )
-                    self.commit(db=db, inst=record_achieve)
+                    commit(db=db, inst=record_achieve)
             db.close()
 
         with open("./DataBases/Users_Achieves_data.json", 'r', encoding="utf8") as f:
@@ -120,16 +121,8 @@ class Bot:
                         reachieve_date=line[6],
                         got_times=line[7]
                     )
-                    self.commit(db=db, inst=record_user_achieve)
+                    commit(db=db, inst=record_user_achieve)
             db.close()
-
-    @staticmethod
-    def commit(db: Session, inst: Union[Group, User, Achieves, UserAchieve]):
-        """Method for pushing records into DB"""
-        print("Загружаю в базу вот такую строчку:", str(inst))
-        db.add(inst)
-        db.commit()
-        db.refresh(inst)
 
     def get_random_user(self, users: list[dict]) -> tuple[list[dict], VkUser]:
         """
@@ -173,7 +166,7 @@ class Bot:
             votes_counter=0,
             for_user_vote=None
         )
-        self.commit(db=db, inst=record_group)
+        commit(db=db, inst=record_group)
         return record_group
 
     def make_empty_record_in_users(self, event: VkBotMessageEvent, db: Session, user_id: int) -> User:
@@ -193,7 +186,7 @@ class Bot:
             rating=0,
             pdr_of_the_year=0
         )
-        self.commit(db=db, inst=record)
+        commit(db=db, inst=record)
         return record
 
     def make_empty_record_in_users_achieves(self, event: VkBotMessageEvent, db: Session,
@@ -213,7 +206,7 @@ class Bot:
             reachieve_date=None,
             got_times=0
         )
-        self.commit(db, record)
+        commit(db, record)
         return record
 
     def random_pdr(self, db: Session, event: VkBotMessageEvent) -> None:
@@ -253,7 +246,7 @@ class Bot:
         else:
             launch_user: User = get_user_record(message.from_id, event.chat_id, db)
             launch_user.rating += 25
-            self.commit(db, launch_user)
+            commit(db, launch_user)
 
             users, fucked = self.get_random_user(users)
             fucked_temp = self.vk.users.get(user_ids=fucked.id, name_case='acc')[0]
@@ -262,7 +255,7 @@ class Bot:
             record_group.today_pdr = user.id
             record_group.pdr_date = datetime.now(tz=moscow_zone).date()
             record_group.who_is_fucked = fucked.id
-            self.commit(db=db, inst=record_group)
+            commit(db=db, inst=record_group)
 
             record_user: User = get_user_record(user.id, event.chat_id, db)
             if record_user is None:
@@ -273,11 +266,11 @@ class Bot:
                 record_fucked = self.make_empty_record_in_users(event=event, db=db, user_id=fucked.id)
             record_fucked.fucked += 1
             record_fucked.rating += 50
-            self.commit(db=db, inst=record_fucked)
+            commit(db=db, inst=record_fucked)
 
             record_user.pdr_num += 1
             record_user.rating += 100
-            self.commit(db=db, inst=record_user)
+            commit(db=db, inst=record_user)
 
             self.send_message(chat_id=event.chat_id,
                               text=f'Сегодня пидор - '
@@ -365,8 +358,8 @@ class Bot:
             record_user.rating += 1000
             record_user.pdr_of_the_year += 1
             record_group.year_pdr = user.id
-            self.commit(db, record_group)
-            self.commit(db, record_user)
+            commit(db, record_group)
+            commit(db, record_user)
             self.send_message(event.chat_id,
                               text=f"Я нашёл главного пидора этого года, это - "
                                    f"[id{user.id}|{user.first_name} {user.last_name}]")
@@ -394,7 +387,7 @@ class Bot:
         message: VkMessage = make_vk_message_schema(event.message)
         launch_user: User = get_user_record(message.from_id, event.chat_id, db)
         launch_user.rating -= 5
-        self.commit(db, launch_user)
+        commit(db, launch_user)
         messages = [f"Я [id{message.from_id}|тебе] сейчас allну по ебалу",
                     f"Ты чего охуел, [id{message.from_id}|Пидор], блять???"]
         self.send_message(event.chat_id,
@@ -472,7 +465,7 @@ class Bot:
         now = datetime.now(tz=moscow_zone)
         is_time = (now - record_group.start_time.astimezone(moscow_zone)).seconds > 3600
         if is_time:
-            self.auto_end_vote(db=db, event=event)
+            auto_end_vote(db=db, group_id=event.chat_id, params=self.params, vk=self.vk)
 
         message: VkMessage = make_vk_message_schema(event.message)
 
@@ -499,9 +492,9 @@ class Bot:
         record_group.start_time = datetime.now(tz=moscow_zone)
         record_group.votes_counter = 0
         record_group.for_user_vote = for_user
-        self.commit(db, record_group)
+        commit(db, record_group)
 
-        p = Popen([sys.executable, "vote_waiting.py"])
+        run([sys.executable, "vote_waiting.py"], input=f"{event.chat_id}")
 
         self.send_message(chat_id=event.chat_id,
                           text=f"@all Началось голосование на {'+' if option else '-'}rep")
@@ -510,7 +503,7 @@ class Bot:
         """This function forced termination of vote"""
         record_group: Group = get_group_record(event.chat_id, db)
         record_group.active_vote = 0
-        self.commit(db=db, inst=record_group)
+        commit(db=db, inst=record_group)
         self.send_message(chat_id=event.chat_id, text="Голосвание было отмененно.")
 
     def say_vote(self, db: Session, event: VkBotMessageEvent, option: bool) -> None:
@@ -534,7 +527,7 @@ class Bot:
         now = datetime.now(tz=moscow_zone)
         is_time = (now - record_group.start_time.astimezone(moscow_zone)).seconds > 3600
         if is_time:
-            self.auto_end_vote(db=db, event=event)
+            auto_end_vote(db=db, group_id=event.chat_id, params=self.params, vk=self.vk)
             return
 
         with open("./DataBases/users.json", 'r') as f:
@@ -560,37 +553,13 @@ class Bot:
         with open("./DataBases/users.json", 'w') as f:
             dump(read_data, f)
 
-        self.commit(db, record_group)
+        commit(db, record_group)
         self.send_message(chat_id=event.chat_id,
                           text=f"[id{message.from_id}|Твой] голос записан.")
 
         # Check for early competition
         if abs(record_group.votes_counter) >= 7:
-            self.auto_end_vote(db=db, event=event)
-
-    def auto_end_vote(self, db: Session, event: VkBotMessageEvent) -> None:
-        """This func ends voting"""
-        record_group: Group = get_group_record(event.chat_id, db)
-        moscow_zone = pytz.timezone("Europe/Moscow")
-        now = datetime.now(tz=moscow_zone)
-        is_time = (now - record_group.start_time.astimezone(moscow_zone)).seconds > 3600  # 3600 is 1 hour by secs
-        if record_group.votes_counter >= 7 or (is_time and record_group.votes_counter > 0):
-            winner_record: User = get_user_record(record_group.for_user_vote, record_group.id, db)
-            winner_record.rating += (50 if record_group.active_vote == 1 else -50)
-            self.send_message(chat_id=event.chat_id,
-                              text=f"Голосование завершено "
-                                   f"{'по времени' if record_group.votes_counter < 7 else 'так как большенство, очевидно, ЗА'}.\n"
-                                   f"[id{winner_record.id}|{winner_record.firstname}] "
-                                   f"{'получил' if record_group.active_vote == 1 else 'потерял'} "
-                                   f"50 рейтинга.")
-            self.commit(db, winner_record)
-        elif record_group.votes_counter <= -7 or (is_time and record_group.votes_counter <= 0):
-
-            self.send_message(chat_id=event.chat_id,
-                              text=f"Голосование завершенно "
-                                   f"{'по времени, результат отрицательный' if record_group.votes_counter < 7 else 'так как большенство, очевидно, ПРОТИВ'}.")
-        record_group.active_vote = 0
-        self.commit(db, record_group)
+            auto_end_vote(db=db, group_id=event.chat_id, params=self.params, vk=self.vk)
 
     def vote_check(self, db: Session, event: VkBotMessageEvent) -> None:
         """This func is called by messages from chat for checking status of voting"""
@@ -606,7 +575,7 @@ class Bot:
         now = datetime.now(tz=moscow_zone)
         is_time = (now - record_group.start_time.astimezone(moscow_zone)).seconds > 3600
         if is_time:
-            self.auto_end_vote(db=db, event=event)
+            auto_end_vote(db=db, group_id=event.chat_id, params=self.params, vk=self.vk)
         else:
             record_user = get_user_record(record_group.for_user_vote, record_group.id, db)
             self.send_message(chat_id=event.chat_id,
@@ -639,8 +608,8 @@ class Bot:
             record_user_achieve.is_got = True
             record_user_achieve.got_times += 1
 
-        self.commit(db, record_user)
-        self.commit(db, record_user_achieve)
+        commit(db, record_user)
+        commit(db, record_user_achieve)
 
         self.send_message(chat_id=event.chat_id,
                           text=f"[id{record_user.id}|{record_user.firstname}] получил достижение "

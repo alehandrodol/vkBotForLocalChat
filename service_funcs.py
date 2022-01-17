@@ -11,12 +11,21 @@ from models import Group, User, Achieves, UserAchieve
 from schemas import VkUser, VkMessage
 
 from pydantic import ValidationError
+from typing import Union
 
 
 def auth_handler():
     key = input()
     remember_device = True
     return key, remember_device
+
+
+def commit(db: Session, inst: Union[Group, User, Achieves, UserAchieve]):
+    """Method for pushing records into DB"""
+    print("Загружаю в базу вот такую строчку:", str(inst))
+    db.add(inst)
+    db.commit()
+    db.refresh(inst)
 
 
 def my_random(right_border: int) -> int:

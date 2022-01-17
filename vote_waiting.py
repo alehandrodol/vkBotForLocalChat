@@ -59,7 +59,7 @@ def auto_end_vote(db: Session, group_id: int, params: dict, vk) -> None:
 
 def wait():
     db: Session = get_db()
-    group_id = int(sys.stdin.read())
+    group_id = -209871225
     vk_session = vk_api.VkApi(
         token=os.environ.get("GROUP_TOKEN"))
     vk = vk_session.get_api()

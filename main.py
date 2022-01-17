@@ -494,8 +494,7 @@ class Bot:
         record_group.for_user_vote = for_user
         commit(db, record_group)
 
-        p = Popen([sys.executable, "vote_waiting.py"], stdin=PIPE, text=True, encoding="utf-8")
-        p.communicate(input=f"{event.chat_id}")
+        Popen([sys.executable, "vote_waiting.py"])
 
         self.send_message(chat_id=event.chat_id,
                           text=f"@all Началось голосование на {'+' if option else '-'}rep")

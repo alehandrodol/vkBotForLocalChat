@@ -1,4 +1,6 @@
 import re
+import sys
+
 import vk_api
 import os
 
@@ -22,6 +24,8 @@ from datetime import datetime
 from typing import Union, List
 
 from json import loads, dump
+
+from subprocess import Popen
 
 
 class Bot:
@@ -496,6 +500,8 @@ class Bot:
         record_group.votes_counter = 0
         record_group.for_user_vote = for_user
         self.commit(db, record_group)
+
+        p = Popen([sys.executable, "vote_waiting.py"])
 
         self.send_message(chat_id=event.chat_id,
                           text=f"@all Началось голосование на {'+' if option else '-'}rep")

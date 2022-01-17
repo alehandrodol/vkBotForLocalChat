@@ -24,7 +24,9 @@ def auto_end_vote(db: Session, group_id: int, params: dict, vk) -> None:
 
     moscow_zone = pytz.timezone("Europe/Moscow")
     now = datetime.now(tz=moscow_zone)
-    is_time = (now - record_group.start_time.astimezone(moscow_zone)).seconds > 3600  # 3600 is 1 hour by secs
+    is_time = (now - record_group.start_time.astimezone(moscow_zone)).seconds > 180  # 3600 is 1 hour by secs
+    print(now)
+    print(record_group.start_time.astimezone(moscow_zone))
     if record_group.votes_counter >= 7 or (is_time and record_group.votes_counter > 0):
         winner_record: User = get_user_record(record_group.for_user_vote, record_group.id, db)
         winner_record.rating += (50 if record_group.active_vote == 1 else -50)
@@ -64,7 +66,7 @@ def wait(group_id: int):
     vk = vk_session.get_api()
     params = vk.groups.getLongPollServer(group_id=209871225)
 
-    sleep(3630)
+    sleep(190)
 
     db: Session = get_db()
     auto_end_vote(db=db, group_id=group_id, params=params, vk=vk)

@@ -24,7 +24,7 @@ def auto_end_vote(db: Session, group_id: int, params: dict, vk) -> None:
 
     moscow_zone = pytz.timezone("Europe/Moscow")
     now = datetime.now(tz=moscow_zone)
-    is_time = (now - record_group.start_time.astimezone(moscow_zone)).seconds > 50  # 3600 is 1 hour by secs
+    is_time = (now - record_group.start_time.astimezone(moscow_zone)).seconds > 3600  # 3600 is 1 hour by secs
     if record_group.votes_counter >= 7 or (is_time and record_group.votes_counter > 0):
         winner_record: User = get_user_record(record_group.for_user_vote, record_group.id, db)
         winner_record.rating += (50 if record_group.active_vote == 1 else -50)
@@ -33,7 +33,7 @@ def auto_end_vote(db: Session, group_id: int, params: dict, vk) -> None:
             server=(params['server']),
             ts=(params['ts']),
             random_id=get_random_id(),
-            message=f"Голосование завершено "
+            message=f"Голосование для [id{record_group.for_user_vote}|пользователя] завершено "
                     f"{'по времени' if record_group.votes_counter < 7 else 'так как большенство, очевидно, ЗА'}.\n"
                     f"[id{winner_record.id}|{winner_record.firstname}] "
                     f"{'получил' if record_group.active_vote == 1 else 'потерял'} "
@@ -49,7 +49,7 @@ def auto_end_vote(db: Session, group_id: int, params: dict, vk) -> None:
             server=(params['server']),
             ts=(params['ts']),
             random_id=get_random_id(),
-            message=f"Голосование завершенно "
+            message=f"Голосование для [id{record_group.for_user_vote}|пользователя] завершенно "
                     f"{'по времени, результат отрицательный' if record_group.votes_counter < 7 else 'так как большенство, очевидно, ПРОТИВ'}.",
             chat_id=group_id
         )
@@ -64,7 +64,7 @@ def wait(group_id: int):
     vk = vk_session.get_api()
     params = vk.groups.getLongPollServer(group_id=209871225)
 
-    sleep(55)
+    sleep(3630)
 
     db: Session = get_db()
     auto_end_vote(db=db, group_id=group_id, params=params, vk=vk)

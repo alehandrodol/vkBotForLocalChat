@@ -1,3 +1,6 @@
+import os
+import vk_api
+
 from json import dumps, loads
 
 from datetime import datetime
@@ -60,6 +63,19 @@ def make_vk_message_schema(message: dict) -> VkMessage:
         print(e.json())
         raise e
     return message
+
+
+def user_api():
+    login = os.environ.get("USER_LOGIN")
+    password = os.environ.get("USER_PASS")
+    vk_user_session = vk_api.VkApi(login, password, auth_handler=auth_handler)
+    try:
+        vk_user_session.auth()
+    except vk_api.AuthError as e:
+        print(e)
+        return
+    user_vk = vk_user_session.get_api()
+    return user_vk
 
 
 def add_new_column_in_json(ind: int):

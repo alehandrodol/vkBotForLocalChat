@@ -6,7 +6,7 @@ from vk_api.bot_longpoll import VkBotLongPoll, VkBotEventType, VkBotMessageEvent
 from vk_api.utils import get_random_id
 
 from service_funcs import auth_handler, my_random, get_group_record, get_user_record, make_vk_user_schema, \
-    make_vk_message_schema, get_achieve_record, get_user_achieve_record
+    make_vk_message_schema, get_achieve_record, get_user_achieve_record, user_api
 
 from core.Base import Base
 from core.database import engine, get_db
@@ -26,7 +26,7 @@ from json import loads, dump
 
 class Bot:
     def __init__(self):  # Bot start
-        Base.metadata.drop_all(bind=engine)
+        # Base.metadata.drop_all(bind=engine)
         # Tables creation
         Base.metadata.create_all(bind=engine)
 
@@ -415,15 +415,7 @@ class Bot:
         and last action is taking photo id
         :return None (instead of return message in chat)
         """
-        login = os.environ.get("USER_LOGIN")
-        password = os.environ.get("USER_PASS")
-        vk_user_session = vk_api.VkApi(login, password, auth_handler=auth_handler)
-        try:
-            vk_user_session.auth()
-        except vk_api.AuthError as e:
-            print(e)
-            return
-        user_vk = vk_user_session.get_api()
+        user_vk = user_api()
 
         counter = user_vk.photos.getAlbums(owner_id="-209871225", album_ids="282103569")["items"][0]["size"]
         offset = my_random(counter)
@@ -437,6 +429,27 @@ class Bot:
             message="",
             chat_id=event.chat_id,
             attachment=f"photo-209871225_{photo_id}"
+        )
+
+    def send_gif(self, event: VkBotMessageEvent) -> None:
+        """
+        This function for sending random gif from docs in vk group.
+        System of getting almost like in func 'send_picture', but
+        using vk.docs.get type=3 means that type is 'gif'
+        """
+        user_vk = user_api()
+
+        list_of_gifs = user_vk.docs.get(type=3, owner_id=-209871225)
+        index = my_random(list_of_gifs['count'])
+        gif_id = list_of_gifs['items'][index]['id']
+        self.vk.messages.send(
+            key=(self.params['key']),
+            server=(self.params['server']),
+            ts=(self.params['ts']),
+            random_id=get_random_id(),
+            message="",
+            chat_id=event.chat_id,
+            attachment=f"doc-209871225_{gif_id}"
         )
 
     def start_vote(self, db: Session, event: VkBotMessageEvent, option: int) -> None:
@@ -599,6 +612,34 @@ class Bot:
                                    f"сторону на {abs(record_group.votes_counter)}.\n"
                                    f"Голосование закончится через {60 - ((now - record_group.start_time.astimezone(moscow_zone)).seconds // 60)} минут")
 
+    def achieve_got(self, achieve_id: int, event: VkBotMessageEvent, db: Session) -> None:
+        """This functiom is always called when someone did any action for getting achieve"""
+        message: VkMessage = make_vk_message_schema(event.message)
+
+        record_user: User = get_user_record(message.from_id, event.chat_id, db)
+        record_user_achieve: UserAchieve = get_user_achieve_record(message.from_id, achieve_id, event.chat_id, db)
+        record_achieve: Achieves = get_achieve_record(achieve_id, db)
+
+        moscow_zone = pytz.timezone("Europe/Moscow")
+        now = datetime.now(tz=moscow_zone)
+        if record_user_achieve.is_got and (record_user_achieve.reachieve_date is None or record_user_achieve.reachieve_date > now):
+            print(f"Для пользователя {message.from_id} ачивка {achieve_id} не доступна")
+            return
+
+        record_user_achieve.current_repeats += 1
+        if record_user_achieve >= record_achieve.needed_repeats:
+            record_user.rating += record_achieve.points
+
+            record_user_achieve.is_got = True
+            record_user_achieve.got_times += 1
+
+        self.commit(db, record_user)
+        self.commit(db, record_user_achieve)
+
+        self.send_message(chat_id=event.chat_id,
+                          text=f"[id{record_user.id}|{record_user.firstname}] получил достижение "
+                               f"{record_achieve.name} и за это ему начисленно {record_achieve.points} очков.")
+
     def listen(self):
         """Main func for listening events"""
         longpoll = VkBotLongPoll(self.vk_session, 209871225)
@@ -614,6 +655,7 @@ class Bot:
                     fucked_stats = ['статистика пассивных']
                     ratings = ['рейтинги', 'таблица', 'лидерборд']
                     pictures = ['пикчу', 'фотку', 'дай фотку', 'рофл', 'ор', 'хуикчу']
+                    gifs = ['гифку', 'гифка', 'хуифка']
 
                     if message_text.lower() in randoms:
                         record_group: Group = session.query(Group).filter(Group.id == event.chat_id).first()
@@ -686,6 +728,8 @@ class Bot:
                     elif message_text.lower() == "проверить голосование":
                         self.vote_check(db=session, event=event)
                         print(f"Выполнил команду {message_text.lower()} от {event.message['from_id']} в чате {event.chat_id}")
+                    elif message_text.lower() in gifs:
+                        self.send_gif(event=event)
                     elif message_text.lower() == 'команды':
                         text = ""
                         text += f"Выбор пидора дня: {', '.join(randoms)};\n " \
@@ -696,6 +740,7 @@ class Bot:
                                 f"Чтобы узнать статистику только по тебе, используй 'моя статистика';\n" \
                                 f"Показать рейтинги участников: {', '.join(ratings)};\n" \
                                 f"Скинуть рандомную фотку из рофло альбома: {', '.join(pictures)};\n" \
+                                f"Скинуть рандомную гифку: {', '.join(gifs)};\n" \
                                 f"Запустить голосование на +- рейтинг: +rep или -rep, " \
                                 f"а дальше нужно тегнуть человека через пробел, во время голосования, есть 3 команды:" \
                                 f"'голос за', 'голос против' и 'проверить голосование'."

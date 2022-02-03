@@ -593,22 +593,21 @@ class Bot:
                                    f"сторону на {abs(record_group.votes_counter)}.\n"
                                    f"Голосование закончится через {60 - ((now - record_group.start_time.astimezone(moscow_zone)).seconds // 60)} минут")
 
-    def achieve_got(self, achieve_id: int, event: VkBotMessageEvent, db: Session) -> Union[None, bool]:
+    def achieve_got(self, achieve_id: int, for_user: int, event: VkBotMessageEvent, db: Session) -> Union[None, bool]:
         """This functiom is always called when someone did any action for getting achieve"""
-        message: VkMessage = make_vk_message_schema(event.message)
 
-        record_user: User = get_user_record(message.from_id, event.chat_id, db)
-        record_user_achieve: UserAchieve = get_user_achieve_record(message.from_id, achieve_id, event.chat_id, db)
+        record_user: User = get_user_record(for_user, event.chat_id, db)
+        record_user_achieve: UserAchieve = get_user_achieve_record(for_user, achieve_id, event.chat_id, db)
         record_achieve: Achieves = get_achieve_record(achieve_id, db)
 
         if record_user_achieve is None:
-            record_user_achieve = self.make_empty_record_in_users_achieves(event=event, db=db, user_id=message.from_id, achieve_id=achieve_id)
+            record_user_achieve = self.make_empty_record_in_users_achieves(event=event, db=db, user_id=for_user, achieve_id=achieve_id)
 
         moscow_zone = pytz.timezone("Europe/Moscow")
         now = datetime.now(tz=moscow_zone)
         if record_user_achieve.is_got:
             if record_user_achieve.reachieve_date is None or record_user_achieve.reachieve_date > now.date():
-                print(f"Для пользователя {message.from_id} ачивка {achieve_id} не доступна")
+                print(f"Для пользователя {for_user} ачивка {achieve_id} не доступна")
                 return False
             else:
                 record_user_achieve.is_got = False
@@ -649,14 +648,19 @@ class Bot:
         return True
 
     def vote_achieve(self, event: VkBotMessageEvent, db: Session, option: bool):
-        is_available = self.achieve_got(achieve_id=6, db=db, event=event)
-        is_available_for_you = self.achieve_got(achieve_id=7, db=db, event=event)
+        message: VkMessage = make_vk_message_schema(event.message)
+
+        for_user = message.text
+        for_user = int(re.search(r'[\d]{8,10}', for_user).group(0))
+
+        is_available = self.achieve_got(achieve_id=6, for_user=message.from_id, db=db, event=event)
+        is_available_for_you = self.achieve_got(achieve_id=7, for_user=for_user, db=db, event=event)
         if not is_available:
             self.send_message(chat_id=event.chat_id,
-                              text=f"Для [id{event.message['from_id']}|тебя] больше недоступен запуск голосований сегодня.")
+                              text=f"Для [id{message.from_id}|тебя] больше недоступен запуск голосований сегодня.")
         elif not is_available_for_you:
             self.send_message(chat_id=event.chat_id,
-                              text=f"Для [id{event.message['from_id']}| него] больше нельзя запускать голосования сегодня.")
+                              text=f"Для [id{for_user}| него] больше нельзя запускать голосования сегодня.")
         else:
             self.start_vote(db=db, event=event, option=option)
 

@@ -601,6 +601,9 @@ class Bot:
         record_user_achieve: UserAchieve = get_user_achieve_record(message.from_id, achieve_id, event.chat_id, db)
         record_achieve: Achieves = get_achieve_record(achieve_id, db)
 
+        if record_user_achieve is None:
+            self.make_empty_record_in_users_achieves(event=event, db=db, user_id=message.from_id, achieve_id=achieve_id)
+
         moscow_zone = pytz.timezone("Europe/Moscow")
         now = datetime.now(tz=moscow_zone)
         if record_user_achieve.is_got:
@@ -628,7 +631,8 @@ class Bot:
             record_user_achieve.is_got = True
             record_user_achieve.got_times += 1
 
-            record_user_achieve.reachieve_date = (now + timedelta(days=record_achieve.day_count_reachieve, seconds=0)).date()
+            if record_achieve.day_count_reachieve is not None:
+                record_user_achieve.reachieve_date = (now + timedelta(days=record_achieve.day_count_reachieve, seconds=0)).date()
 
             text = f"[id{record_user.id}|{record_user.firstname}] получил достижение " \
                    f"{record_achieve.name} и за это ему начисленно {record_achieve.points} очков."

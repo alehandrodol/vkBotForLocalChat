@@ -653,7 +653,7 @@ class Bot:
         for_user = message.text
         for_user = int(re.search(r'[\d]{8,10}', for_user).group(0))
 
-        record_user_achieve: UserAchieve = get_user_achieve_record(for_user, 6, event.chat_id, db)
+        record_user_achieve: UserAchieve = get_user_achieve_record(for_user, 7, event.chat_id, db)
         if record_user_achieve is None:
             record_user_achieve = self.make_empty_record_in_users_achieves(event=event, db=db, user_id=for_user, achieve_id=7)
 

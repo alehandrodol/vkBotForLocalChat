@@ -602,7 +602,7 @@ class Bot:
         record_achieve: Achieves = get_achieve_record(achieve_id, db)
 
         if record_user_achieve is None:
-            self.make_empty_record_in_users_achieves(event=event, db=db, user_id=message.from_id, achieve_id=achieve_id)
+            record_user_achieve = self.make_empty_record_in_users_achieves(event=event, db=db, user_id=message.from_id, achieve_id=achieve_id)
 
         moscow_zone = pytz.timezone("Europe/Moscow")
         now = datetime.now(tz=moscow_zone)

@@ -653,16 +653,23 @@ class Bot:
         for_user = message.text
         for_user = int(re.search(r'[\d]{8,10}', for_user).group(0))
 
+        record_user_achieve: UserAchieve = get_user_achieve_record(for_user, 6, event.chat_id, db)
+        if record_user_achieve is None:
+            record_user_achieve = self.make_empty_record_in_users_achieves(event=event, db=db, user_id=for_user, achieve_id=7)
+
+        moscow_zone = pytz.timezone("Europe/Moscow")
+        now = datetime.now(tz=moscow_zone)
+        if record_user_achieve.is_got and (record_user_achieve.reachieve_date is None or record_user_achieve.reachieve_date > now.date()):
+            self.send_message(chat_id=event.chat_id,
+                              text=f"Для [id{for_user}| него] больше нельзя запускать голосования сегодня.")
+            return
         is_available = self.achieve_got(achieve_id=6, for_user=message.from_id, db=db, event=event)
-        is_available_for_you = self.achieve_got(achieve_id=7, for_user=for_user, db=db, event=event)
         if not is_available:
             self.send_message(chat_id=event.chat_id,
                               text=f"Для [id{message.from_id}|тебя] больше недоступен запуск голосований сегодня.")
-        elif not is_available_for_you:
-            self.send_message(chat_id=event.chat_id,
-                              text=f"Для [id{for_user}| него] больше нельзя запускать голосования сегодня.")
-        else:
-            self.start_vote(db=db, event=event, option=option)
+            return
+        self.achieve_got(achieve_id=7, for_user=for_user, db=db, event=event)
+        self.start_vote(db=db, event=event, option=option)
 
     def listen(self):
         """Main func for listening events"""

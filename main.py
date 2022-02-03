@@ -635,8 +635,9 @@ class Bot:
 
             text = f"[id{record_user.id}|{record_user.firstname}] получил достижение " \
                    f"{record_achieve.name} и за это ему начисленно {record_achieve.points} очков."
-            self.send_message(chat_id=event.chat_id,
-                              text=text)
+            if achieve_id != 6:
+                self.send_message(chat_id=event.chat_id,
+                                  text=text)
             print(text)
 
         commit(db, record_user)

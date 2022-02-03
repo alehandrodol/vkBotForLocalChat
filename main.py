@@ -22,7 +22,7 @@ from sqlalchemy.orm import Session
 import pytz
 from datetime import datetime, timedelta
 
-from typing import List
+from typing import List, Union
 
 from json import loads, dump
 
@@ -593,7 +593,7 @@ class Bot:
                                    f"сторону на {abs(record_group.votes_counter)}.\n"
                                    f"Голосование закончится через {60 - ((now - record_group.start_time.astimezone(moscow_zone)).seconds // 60)} минут")
 
-    def achieve_got(self, achieve_id: int, event: VkBotMessageEvent, db: Session) -> None:
+    def achieve_got(self, achieve_id: int, event: VkBotMessageEvent, db: Session) -> Union[None, bool]:
         """This functiom is always called when someone did any action for getting achieve"""
         message: VkMessage = make_vk_message_schema(event.message)
 
@@ -609,7 +609,7 @@ class Bot:
         if record_user_achieve.is_got:
             if record_user_achieve.reachieve_date is None or record_user_achieve.reachieve_date > now.date():
                 print(f"Для пользователя {message.from_id} ачивка {achieve_id} не доступна")
-                return
+                return False
             else:
                 record_user_achieve.is_got = False
                 record_user_achieve.reachieve_date = None
@@ -645,6 +645,13 @@ class Bot:
 
         print(f"user {record_user.id} added one repeat in achieve id {record_achieve.id}\n"
               f"And now he has {record_user_achieve.current_repeats} repeats")
+
+        return True
+
+    def vote_achieve(self, event: VkBotMessageEvent, db: Session, option: bool):
+        is_available = self.achieve_got(achieve_id=6, db=db, event=event)
+        if is_available:
+            self.start_vote(db=db, event=event, option=option)
 
     def listen(self):
         """Main func for listening events"""
@@ -717,12 +724,10 @@ class Bot:
                         self.send_picture(event=event)
                         print(f"Выполнил команду {message_text.lower()} от {event.message['from_id']} в чате {event.chat_id}")
                     elif re.fullmatch(r'\+rep\s\[id[\d]{8,10}\|.*]', message_text.lower()):
-                        self.start_vote(db=session, event=event, option=True)
-                        self.achieve_got(achieve_id=6, db=session, event=event)
+                        self.vote_achieve(event=event, db=session, option=True)
                         print(f"Выполнил команду {message_text.lower()} от {event.message['from_id']} в чате {event.chat_id}")
                     elif re.fullmatch(r'-rep\s\[id[\d]{8,10}\|.*]', message_text.lower()):
-                        self.start_vote(db=session, event=event, option=False)
-                        self.achieve_got(achieve_id=6, db=session, event=event)
+                        self.vote_achieve(event=event, db=session, option=False)
                         print(f"Выполнил команду {message_text.lower()} от {event.message['from_id']} в чате {event.chat_id}")
                     elif message_text.lower() == "отменить голосование" and event.message['from_id'] == 221767748:
                         self.hand_end_vote(db=session, event=event)

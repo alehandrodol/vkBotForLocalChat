@@ -20,7 +20,7 @@ from schemas import VkUser, VkMessage
 from sqlalchemy.orm import Session
 
 import pytz
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from typing import List
 
@@ -31,7 +31,7 @@ from subprocess import Popen, PIPE
 
 class Bot:
     def __init__(self):  # Bot start
-        # Base.metadata.drop_all(bind=engine)
+        Base.metadata.drop_all(bind=engine)
         # Tables creation
         Base.metadata.create_all(bind=engine)
 
@@ -603,23 +603,44 @@ class Bot:
 
         moscow_zone = pytz.timezone("Europe/Moscow")
         now = datetime.now(tz=moscow_zone)
-        if record_user_achieve.is_got and (record_user_achieve.reachieve_date is None or record_user_achieve.reachieve_date > now):
-            print(f"Для пользователя {message.from_id} ачивка {achieve_id} не доступна")
-            return
+        if record_user_achieve.is_got:
+            if record_user_achieve.reachieve_date is None or record_user_achieve.reachieve_date > now.date():
+                print(f"Для пользователя {message.from_id} ачивка {achieve_id} не доступна")
+                return
+            else:
+                record_user_achieve.is_got = False
+                record_user_achieve.reachieve_date = None
+                record_user_achieve.current_repeats = 0
+
+        if record_user_achieve.last_date is not None:
+            if record_achieve.secs_to_reseting >= 86400:
+                if (now.date() - record_user_achieve.last_date.date()).days > record_achieve.secs_to_reseting // 86400:
+                    record_user_achieve.current_repeats = 0
+            else:
+                if (now - record_user_achieve.last_date).seconds > record_achieve.secs_to_reseting:
+                    record_user_achieve.current_repeats = 0
 
         record_user_achieve.current_repeats += 1
-        if record_user_achieve >= record_achieve.needed_repeats:
+        record_user_achieve.last_date = now
+        if record_user_achieve.current_repeats >= record_achieve.needed_repeats:
             record_user.rating += record_achieve.points
 
             record_user_achieve.is_got = True
             record_user_achieve.got_times += 1
 
+            record_user_achieve.reachieve_date = (now + timedelta(days=record_achieve.day_count_reachieve, seconds=0)).date()
+
+            text = f"[id{record_user.id}|{record_user.firstname}] получил достижение " \
+                   f"{record_achieve.name} и за это ему начисленно {record_achieve.points} очков."
+            self.send_message(chat_id=event.chat_id,
+                              text=text)
+            print(text)
+
         commit(db, record_user)
         commit(db, record_user_achieve)
 
-        self.send_message(chat_id=event.chat_id,
-                          text=f"[id{record_user.id}|{record_user.firstname}] получил достижение "
-                               f"{record_achieve.name} и за это ему начисленно {record_achieve.points} очков.")
+        print(f"user {record_user.id} added one repeat in achieve id {record_achieve.id}\n"
+              f"And now he has {record_user_achieve.current_repeats} repeats")
 
     def listen(self):
         """Main func for listening events"""
@@ -693,9 +714,11 @@ class Bot:
                         print(f"Выполнил команду {message_text.lower()} от {event.message['from_id']} в чате {event.chat_id}")
                     elif re.fullmatch(r'\+rep\s\[id[\d]{8,10}\|.*]', message_text.lower()):
                         self.start_vote(db=session, event=event, option=True)
+                        self.achieve_got(achieve_id=6, db=session, event=event)
                         print(f"Выполнил команду {message_text.lower()} от {event.message['from_id']} в чате {event.chat_id}")
                     elif re.fullmatch(r'-rep\s\[id[\d]{8,10}\|.*]', message_text.lower()):
                         self.start_vote(db=session, event=event, option=False)
+                        self.achieve_got(achieve_id=6, db=session, event=event)
                         print(f"Выполнил команду {message_text.lower()} от {event.message['from_id']} в чате {event.chat_id}")
                     elif message_text.lower() == "отменить голосование" and event.message['from_id'] == 221767748:
                         self.hand_end_vote(db=session, event=event)

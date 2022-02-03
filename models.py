@@ -73,7 +73,7 @@ class UserAchieve(Base):
     user_id = Column(Integer, primary_key=True)
     achieve_id = Column(Integer, primary_key=True, unique=False)
     chat_id = Column(Integer, primary_key=True, unique=False)
-    last_date = Column(Date)
+    last_date = Column(DateTime)
     current_repeats = Column(Integer)
     is_got = Column(Boolean)
     reachieve_date = Column(Date)

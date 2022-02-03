@@ -652,6 +652,9 @@ class Bot:
         is_available = self.achieve_got(achieve_id=6, db=db, event=event)
         if is_available:
             self.start_vote(db=db, event=event, option=option)
+        else:
+            self.send_message(chat_id=event.chat_id,
+                              text=f"Для [id{event.message['from_id']}|тебя] больше недоступен запуск голосования.")
 
     def listen(self):
         """Main func for listening events"""

@@ -657,7 +657,7 @@ class Bot:
         if record_user_achieve is None:
             record_user_achieve = self.make_empty_record_in_users_achieves(event=event, db=db, user_id=for_user, achieve_id=7)
 
-        commit(record_user_achieve)
+        commit(db, record_user_achieve)
 
         moscow_zone = pytz.timezone("Europe/Moscow")
         now = datetime.now(tz=moscow_zone)

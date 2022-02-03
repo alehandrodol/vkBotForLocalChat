@@ -650,11 +650,15 @@ class Bot:
 
     def vote_achieve(self, event: VkBotMessageEvent, db: Session, option: bool):
         is_available = self.achieve_got(achieve_id=6, db=db, event=event)
-        if is_available:
-            self.start_vote(db=db, event=event, option=option)
-        else:
+        is_available_for_you = self.achieve_got(achieve_id=7, db=db, event=event)
+        if not is_available:
             self.send_message(chat_id=event.chat_id,
-                              text=f"Для [id{event.message['from_id']}|тебя] больше недоступен запуск голосования.")
+                              text=f"Для [id{event.message['from_id']}|тебя] больше недоступен запуск голосований сегодня.")
+        elif not is_available_for_you:
+            self.send_message(chat_id=event.chat_id,
+                              text=f"Для [id{event.message['from_id']}| него] больше нельзя запускать голосования сегодня.")
+        else:
+            self.start_vote(db=db, event=event, option=option)
 
     def listen(self):
         """Main func for listening events"""

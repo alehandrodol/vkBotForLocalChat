@@ -715,6 +715,9 @@ class Bot:
         message: VkMessage = make_vk_message_schema(event.message)
         record_user_achieve: UserAchieve = get_user_achieve_record(message.from_id, 8, event.chat_id, db)
 
+        if record_user_achieve is None:
+            record_user_achieve = self.make_empty_record_in_users_achieves(event=event, db=db, user_id=message.from_id, achieve_id=8)
+
         moscow_zone = pytz.timezone("Europe/Moscow")
         now = datetime.now(tz=moscow_zone)
         if record_user_achieve.last_date is None or record_user_achieve.last_date.date() < now.date():

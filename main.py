@@ -723,9 +723,8 @@ class Bot:
         moscow_zone = pytz.timezone("Europe/Moscow")
         now = datetime.now(tz=moscow_zone)
         if (record_user_achieve.last_date is None) or (now.date() - record_user_achieve.last_date.date()).days > 0:
-            print((record_user_achieve.last_date is None))
             try:
-                print((now.date() - record_user_achieve.last_date.date()).days)
+                print(now.date(), record_user_achieve.last_date.date())
             except:
                 print("NONE")
             status = self.achieve_got(achieve_id=8, for_user=message.from_id, event=event, db=db)

@@ -630,7 +630,7 @@ class Bot:
                     record_user_achieve.current_repeats = 0
 
         record_user_achieve.current_repeats += 1
-        record_user_achieve.last_date = now
+        record_user_achieve.last_date = datetime.now() + timedelta(hours=3)
         if record_user_achieve.current_repeats >= record_achieve.needed_repeats:
             record_user.rating += record_achieve.points
 
@@ -723,10 +723,6 @@ class Bot:
         moscow_zone = pytz.timezone("Europe/Moscow")
         now = datetime.now(tz=moscow_zone)
         if (record_user_achieve.last_date is None) or (now.date() - record_user_achieve.last_date.date()).days > 0:
-            try:
-                print(record_user_achieve.last_date)
-            except:
-                print("NONE")
             status = self.achieve_got(achieve_id=8, for_user=message.from_id, event=event, db=db)
         return status
 

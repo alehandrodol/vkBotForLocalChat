@@ -649,8 +649,8 @@ class Bot:
                 self.send_message(chat_id=event.chat_id,
                                   text=text)
             print(text)
+            commit(db, record_user)
 
-        commit(db, record_user)
         commit(db, record_user_achieve)
 
         print(f"user {record_user.id} added one repeat in achieve id {record_achieve.id}\n"

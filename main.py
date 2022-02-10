@@ -693,6 +693,8 @@ class Bot:
                 record_achieve: Achieves = get_achieve_record(achieve_id=4, db=db)
                 record_achieve.is_available = False
                 commit(db=db, inst=record_achieve)
+                self.send_message(chat_id=event.chat_id,
+                                  text="Это была секретная ачивка ;)")
 
     def my_achieves(self, event: VkBotMessageEvent, db: Session):
         message: VkMessage = make_vk_message_schema(event.message)
@@ -788,6 +790,8 @@ class Bot:
                             if status == 2:
                                 pers_stat_ach.is_available = False
                                 commit(db=session, inst=pers_stat_ach)
+                                self.send_message(chat_id=event.chat_id,
+                                                  text="Это была секретная ачивка ;)")
                         print(f"Выполнил команду {message_text.lower()} от {message.from_id} в чате {event.chat_id}")
                     elif message_text.lower() in fucked_stats:
                         self.statistics(db=session, event=event, option=2)
@@ -799,7 +803,12 @@ class Bot:
                         suka_ach: Achieves = get_achieve_record(achieve_id=9, db=session)
                         self.suka_all(session, event)
                         if suka_ach.is_available:
-                            self.achieve_got(achieve_id=9, for_user=message.from_id, event=event, db=session)
+                            status = self.achieve_got(achieve_id=9, for_user=message.from_id, event=event, db=session)
+                            if status == 2:
+                                suka_ach.is_available = False
+                                commit(db=session, inst=suka_ach)
+                                self.send_message(chat_id=event.chat_id,
+                                                  text="Это была секретная ачивка ;)")
                         print(f"Выполнил команду {message_text.lower()} от {message.from_id} в чате {event.chat_id}")
                     elif message_text.lower() in pictures or re.fullmatch(r"о+р+", message_text.lower()):
                         self.send_picture(event=event)
@@ -854,6 +863,8 @@ class Bot:
                             if status == 2:
                                 fifteen_days_ach.is_available = False
                                 commit(db=session, inst=fifteen_days_ach)
+                                self.send_message(chat_id=event.chat_id,
+                                                  text="Это была секретная ачивка ;)")
                     session.close()
 
 

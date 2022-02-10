@@ -1,8 +1,8 @@
 import re
 import sys
+import os
 
 import vk_api
-import os
 
 from vk_api.bot_longpoll import VkBotLongPoll, VkBotEventType, VkBotMessageEvent
 from vk_api.utils import get_random_id
@@ -31,7 +31,7 @@ from subprocess import Popen, PIPE
 
 class Bot:
     def __init__(self):  # Bot start
-        # Base.metadata.drop_all(bind=engine)
+        Base.metadata.drop_all(bind=engine)
         # Tables creation
         Base.metadata.create_all(bind=engine)
 
@@ -40,6 +40,8 @@ class Bot:
             token=os.environ.get("GROUP_TOKEN"))
         self.vk = self.vk_session.get_api()
         self.params = self.vk.groups.getLongPollServer(group_id=209871225)
+
+        self.avoid_achieves = [6, 7]  # var for avoiding sending messages for achieves with these ids
 
         '''Two blocks of with is wor changing or creation data from json files'''
         with open("./DataBases/groups_data.json", 'r', encoding="utf8") as f:
@@ -267,10 +269,12 @@ class Bot:
             record_fucked.fucked += 1
             record_fucked.rating += 50
             commit(db=db, inst=record_fucked)
+            self.achieve_got(achieve_id=1, for_user=record_fucked.id, event=event, db=db)
 
             record_user.pdr_num += 1
             record_user.rating += 100
             commit(db=db, inst=record_user)
+            self.achieve_got(achieve_id=1, for_user=record_user.id, event=event, db=db)
 
             self.send_message(chat_id=event.chat_id,
                               text=f'Сегодня пидор - '
@@ -593,12 +597,14 @@ class Bot:
                                    f"сторону на {abs(record_group.votes_counter)}.\n"
                                    f"Голосование закончится через {60 - ((now - record_group.start_time.astimezone(moscow_zone)).seconds // 60)} минут")
 
-    def achieve_got(self, achieve_id: int, for_user: int, event: VkBotMessageEvent, db: Session) -> Union[None, bool]:
+    def achieve_got(self, achieve_id: int, for_user: int, event: VkBotMessageEvent, db: Session) -> Union[None, int]:
         """This functiom is always called when someone did any action for getting achieve"""
 
+        record_achieve: Achieves = get_achieve_record(achieve_id, db)
         record_user: User = get_user_record(for_user, event.chat_id, db)
         record_user_achieve: UserAchieve = get_user_achieve_record(for_user, achieve_id, event.chat_id, db)
-        record_achieve: Achieves = get_achieve_record(achieve_id, db)
+
+        status = 1
 
         if record_user_achieve is None:
             record_user_achieve = self.make_empty_record_in_users_achieves(event=event, db=db, user_id=for_user, achieve_id=achieve_id)
@@ -608,7 +614,8 @@ class Bot:
         if record_user_achieve.is_got:
             if record_user_achieve.reachieve_date is None or record_user_achieve.reachieve_date > now.date():
                 print(f"Для пользователя {for_user} ачивка {achieve_id} не доступна")
-                return False
+                status = 0
+                return status
             else:
                 record_user_achieve.is_got = False
                 record_user_achieve.reachieve_date = None
@@ -635,7 +642,10 @@ class Bot:
 
             text = f"[id{record_user.id}|{record_user.firstname}] получил достижение " \
                    f"{record_achieve.name} и за это ему начисленно {record_achieve.points} очков."
-            if achieve_id != 6:
+
+            status = 2
+
+            if achieve_id not in self.avoid_achieves:
                 self.send_message(chat_id=event.chat_id,
                                   text=text)
             print(text)
@@ -646,7 +656,7 @@ class Bot:
         print(f"user {record_user.id} added one repeat in achieve id {record_achieve.id}\n"
               f"And now he has {record_user_achieve.current_repeats} repeats")
 
-        return True
+        return status
 
     def vote_achieve(self, event: VkBotMessageEvent, db: Session, option: bool):
         message: VkMessage = make_vk_message_schema(event.message)
@@ -667,12 +677,49 @@ class Bot:
                               text=f"Для [id{for_user}| него] больше нельзя запускать голосования сегодня.")
             return
         is_available = self.achieve_got(achieve_id=6, for_user=message.from_id, db=db, event=event)
-        if not is_available:
+        if is_available == 0:
             self.send_message(chat_id=event.chat_id,
                               text=f"Для [id{message.from_id}|тебя] больше недоступен запуск голосований сегодня.")
             return
         self.achieve_got(achieve_id=7, for_user=for_user, db=db, event=event)
         self.start_vote(db=db, event=event, option=option)
+
+    def check_tag(self, event: VkBotMessageEvent, db: Session) -> None:
+        message: VkMessage = make_vk_message_schema(event.message)
+        record_group: Group = get_group_record(event.chat_id, db)
+        if "id" + str(record_group.today_pdr) in message.text.lower():
+            is_got = self.achieve_got(achieve_id=4, for_user=message.from_id, event=event, db=db)
+            if is_got > 0:
+                record_achieve: Achieves = get_achieve_record(achieve_id=4, db=db)
+                record_achieve.is_available = False
+                commit(db=db, inst=record_achieve)
+
+    def my_achieves(self, event: VkBotMessageEvent, db: Session):
+        message: VkMessage = make_vk_message_schema(event.message)
+        user_achieves_list: List[UserAchieve] = db.query(UserAchieve).all()
+        text = f"[id{message.from_id}|Вы] получали такие достижения:\n"
+        for ach in user_achieves_list:
+            if ach.achieve_id in self.avoid_achieves:
+                continue
+            achieve: Achieves = db.query(Achieves).filter(Achieves.id == ach.achieve_id).first()
+            text += f"{achieve.name} {ach.got_times} раз \n"
+        if text == f"[id{event.message['from_id']}|Вы] получали такие достижения:\n":
+            self.send_message(chat_id=event.chat_id,
+                              text="Вы ещё не получали никаких достижений.")
+        else:
+            self.send_message(chat_id=event.chat_id,
+                              text=text)
+
+    def fifteen_days(self, event: VkBotMessageEvent, db: Session) -> int:
+        status = -1
+        message: VkMessage = make_vk_message_schema(event.message)
+        record_user_achieve: UserAchieve = get_user_achieve_record(message.from_id, 8, event.chat_id, db)
+
+        moscow_zone = pytz.timezone("Europe/Moscow")
+        now = datetime.now(tz=moscow_zone)
+        if record_user_achieve.last_date is None or record_user_achieve.last_date.date() < now.date():
+            status = self.achieve_got(achieve_id=8, for_user=message.from_id, event=event, db=db)
+        return status
 
     def listen(self):
         """Main func for listening events"""
@@ -680,9 +727,10 @@ class Bot:
 
         for event in longpoll.listen():
             if event.type == VkBotEventType.MESSAGE_NEW:
-                if event.from_chat:
+                if event.from_chat and event.message["from_id"] > 0:
                     session: Session = get_db()
-                    message_text: str = event.message['text']
+                    message: VkMessage = make_vk_message_schema(event.message)
+                    message_text: str = message.text
                     randoms = ['рандом', 'кто пидор?', 'рандомчик', 'пидор дня', 'заролить']
                     year = ['годовалый', 'пидор года']
                     pdr_stats = ['титулы', 'кол-во пидоров', 'статистика титулы', 'статистика']
@@ -693,7 +741,6 @@ class Bot:
 
                     if message_text.lower() in randoms:
                         record_group: Group = session.query(Group).filter(Group.id == event.chat_id).first()
-                        message: VkMessage = make_vk_message_schema(event.message)
 
                         # Is record exist
                         if record_group is None:  # Make record if not
@@ -717,53 +764,69 @@ class Bot:
                                 self.send_message(event.chat_id,
                                                   text=f"[id{message.from_id}|Ты] сегодня счастливчик")
                                 self.random_pdr(db=session, event=event)
+                                self.achieve_got(achieve_id=2, for_user=message.from_id, event=event, db=session)
                             else:
                                 self.send_message(event.chat_id,
                                                   text=f"[id{message.from_id}|Ты] не угадал сегодняшнюю фразу")
                         else:
                             self.random_pdr(db=session, event=event)
-                        print(f"Выполнил команду {message_text.lower()} от {event.message['from_id']} в чате {event.chat_id}")
+                        print(f"Выполнил команду {message_text.lower()} от {message.from_id} в чате {event.chat_id}")
                     elif message_text.lower() in year:
                         self.pdr_of_the_year(db=session, event=event)
-                        print(f"Выполнил команду {message_text.lower()} от {event.message['from_id']} в чате {event.chat_id}")
+                        print(f"Выполнил команду {message_text.lower()} от {message.from_id} в чате {event.chat_id}")
                     elif message_text.lower() in pdr_stats:
                         self.statistics(db=session, event=event, option=1)
-                        print(f"Выполнил команду {message_text.lower()} от {event.message['from_id']} в чате {event.chat_id}")
+                        print(f"Выполнил команду {message_text.lower()} от {message.from_id} в чате {event.chat_id}")
                     elif message_text.lower() == "моя статистика":
                         self.personal_stats(event=event, db=session)
-                        print(f"Выполнил команду {message_text.lower()} от {event.message['from_id']} в чате {event.chat_id}")
+                        pers_stat_ach: Achieves = get_achieve_record(achieve_id=3, db=session)
+                        if pers_stat_ach.is_available:
+                            status = self.achieve_got(achieve_id=3, for_user=message.from_id, event=event, db=session)
+                            if status == 2:
+                                pers_stat_ach.is_available = False
+                                commit(db=session, inst=pers_stat_ach)
+                        print(f"Выполнил команду {message_text.lower()} от {message.from_id} в чате {event.chat_id}")
                     elif message_text.lower() in fucked_stats:
                         self.statistics(db=session, event=event, option=2)
-                        print(f"Выполнил команду {message_text.lower()} от {event.message['from_id']} в чате {event.chat_id}")
+                        print(f"Выполнил команду {message_text.lower()} от {message.from_id} в чате {event.chat_id}")
                     elif message_text.lower() in ratings:
                         self.statistics(db=session, event=event, option=3)
-                        print(f"Выполнил команду {message_text.lower()} от {event.message['from_id']} в чате {event.chat_id}")
+                        print(f"Выполнил команду {message_text.lower()} от {message.from_id} в чате {event.chat_id}")
                     elif '@all' in message_text.lower():
+                        suka_ach: Achieves = get_achieve_record(achieve_id=9, db=session)
                         self.suka_all(session, event)
-                        print(f"Выполнил команду {message_text.lower()} от {event.message['from_id']} в чате {event.chat_id}")
+                        if suka_ach.is_available:
+                            self.achieve_got(achieve_id=9, for_user=message.from_id, event=event, db=session)
+                        print(f"Выполнил команду {message_text.lower()} от {message.from_id} в чате {event.chat_id}")
                     elif message_text.lower() in pictures or re.fullmatch(r"о+р+", message_text.lower()):
                         self.send_picture(event=event)
-                        print(f"Выполнил команду {message_text.lower()} от {event.message['from_id']} в чате {event.chat_id}")
+                        print(f"Выполнил команду {message_text.lower()} от {message.from_id} в чате {event.chat_id}")
                     elif re.fullmatch(r'\+rep\s\[id[\d]{8,10}\|.*]', message_text.lower()):
                         self.vote_achieve(event=event, db=session, option=True)
-                        print(f"Выполнил команду {message_text.lower()} от {event.message['from_id']} в чате {event.chat_id}")
+                        print(f"Выполнил команду {message_text.lower()} от {message.from_id} в чате {event.chat_id}")
                     elif re.fullmatch(r'-rep\s\[id[\d]{8,10}\|.*]', message_text.lower()):
                         self.vote_achieve(event=event, db=session, option=False)
-                        print(f"Выполнил команду {message_text.lower()} от {event.message['from_id']} в чате {event.chat_id}")
-                    elif message_text.lower() == "отменить голосование" and event.message['from_id'] == 221767748:
+                        print(f"Выполнил команду {message_text.lower()} от {message.from_id} в чате {event.chat_id}")
+                    elif message_text.lower() == "отменить голосование" and message.from_id == 221767748:
                         self.hand_end_vote(db=session, event=event)
-                        print(f"Выполнил команду {message_text.lower()} от {event.message['from_id']} в чате {event.chat_id}")
+                        print(f"Выполнил команду {message_text.lower()} от {message.from_id} в чате {event.chat_id}")
                     elif message_text.lower() == "голос за":
                         self.say_vote(db=session, event=event, option=True)
-                        print(f"Выполнил команду {message_text.lower()} от {event.message['from_id']} в чате {event.chat_id}")
+                        print(f"Выполнил команду {message_text.lower()} от {message.from_id} в чате {event.chat_id}")
                     elif message_text.lower() == "голос против":
                         self.say_vote(db=session, event=event, option=False)
-                        print(f"Выполнил команду {message_text.lower()} от {event.message['from_id']} в чате {event.chat_id}")
+                        print(f"Выполнил команду {message_text.lower()} от {message.from_id} в чате {event.chat_id}")
                     elif message_text.lower() == "проверить голосование":
                         self.vote_check(db=session, event=event)
-                        print(f"Выполнил команду {message_text.lower()} от {event.message['from_id']} в чате {event.chat_id}")
+                        print(f"Выполнил команду {message_text.lower()} от {message.from_id} в чате {event.chat_id}")
+                    elif re.fullmatch(r'[id[\d]{8,10}\|.*]', message_text.lower()):
+                        tag_ach: Achieves = get_achieve_record(achieve_id=4, db=session)
+                        if tag_ach.is_available:
+                            self.check_tag(event=event, db=session)
                     elif message_text.lower() in gifs:
                         self.send_gif(event=event)
+                    elif message_text.lower() == "мои достижения":
+                        self.my_achieves(event=event, db=session)
                     elif message_text.lower() == 'команды':
                         text = ""
                         text += f"Выбор пидора дня: {', '.join(randoms)};\n " \
@@ -778,9 +841,16 @@ class Bot:
                                 f"Запустить голосование на +- рейтинг: +rep или -rep, " \
                                 f"а дальше нужно тегнуть человека через пробел, во время голосования, есть 3 команды:" \
                                 f"'голос за', 'голос против' и 'проверить голосование'."
-                        print(f"Выполнил команду {message_text.lower()} от {event.message['from_id']} в чате {event.chat_id}")
+                        print(f"Выполнил команду {message_text.lower()} от {message.from_id} в чате {event.chat_id}")
                         self.send_message(event.chat_id,
                                           text=text)
+                    else:
+                        fifteen_days_ach: Achieves = get_achieve_record(achieve_id=8, db=session)
+                        if fifteen_days_ach.is_available:
+                            status = self.fifteen_days(event=event, db=session)
+                            if status == 2:
+                                fifteen_days_ach.is_available = False
+                                commit(db=session, inst=fifteen_days_ach)
                     session.close()
 
 

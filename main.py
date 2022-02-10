@@ -630,7 +630,7 @@ class Bot:
                     record_user_achieve.current_repeats = 0
 
         record_user_achieve.current_repeats += 1
-        record_user_achieve.last_date = datetime.now() + timedelta(hours=3)
+        record_user_achieve.last_date = datetime.now(tz=pytz.utc) + timedelta(hours=3)
         if record_user_achieve.current_repeats >= record_achieve.needed_repeats:
             record_user.rating += record_achieve.points
 

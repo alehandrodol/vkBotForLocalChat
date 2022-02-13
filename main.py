@@ -31,7 +31,7 @@ from subprocess import Popen, PIPE
 
 class Bot:
     def __init__(self):  # Bot start
-        # Base.metadata.drop_all(bind=engine)
+        Base.metadata.drop_all(bind=engine)
         # Tables creation
         Base.metadata.create_all(bind=engine)
 
@@ -831,7 +831,7 @@ class Bot:
                     elif message_text.lower() == "проверить голосование":
                         self.vote_check(db=session, event=event)
                         print(f"Выполнил команду {message_text.lower()} от {message.from_id} в чате {event.chat_id}")
-                    elif re.fullmatch(r'[id[\d]{8,10}\|.*]', message_text.lower()):
+                    elif re.search(r'\[id[\d]{8,10}\|.*]', message_text.lower()):
                         tag_ach: Achieves = get_achieve_record(achieve_id=4, db=session)
                         if tag_ach.is_available:
                             self.check_tag(event=event, db=session)

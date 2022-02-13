@@ -8,6 +8,7 @@
     [6, "start_voting", 0, true, 2, 1, 86400],
     [7, "voting_for_you", 0, true, 2, 1, 86400],
     [8, "15 days in a row", 100, true, 15, null, 86400],
-    [9, "suka all", 75, true, 5, null, 86400]
+    [9, "suka all", 75, true, 5, null, 86400],
+    [10, ""]
   ]
 }

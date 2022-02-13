@@ -698,12 +698,14 @@ class Bot:
 
     def my_achieves(self, event: VkBotMessageEvent, db: Session):
         message: VkMessage = make_vk_message_schema(event.message)
-        user_achieves_list: List[UserAchieve] = db.query(UserAchieve).all()
+        user_achieves_list: List[UserAchieve] = db.query(UserAchieve).filter(UserAchieve.user_id == message.from_id).all()
         text = f"[id{message.from_id}|Вы] получали такие достижения:\n"
         for ach in user_achieves_list:
             if ach.achieve_id in self.avoid_achieves:
                 continue
-            achieve: Achieves = db.query(Achieves).filter(Achieves.id == ach.achieve_id).first()
+            if ach.got_times == 0:
+                continue
+            achieve: Achieves = get_achieve_record(achieve_id=ach.achieve_id, db=db)
             text += f"{achieve.name} {ach.got_times} раз \n"
         if text == f"[id{event.message['from_id']}|Вы] получали такие достижения:\n":
             self.send_message(chat_id=event.chat_id,
@@ -852,7 +854,8 @@ class Bot:
                                 f"Скинуть рандомную гифку: {', '.join(gifs)};\n" \
                                 f"Запустить голосование на +- рейтинг: +rep или -rep, " \
                                 f"а дальше нужно тегнуть человека через пробел, во время голосования, есть 3 команды:" \
-                                f"'голос за', 'голос против' и 'проверить голосование'."
+                                f"'голос за', 'голос против' и 'проверить голосование';\n" \
+                                f"Показать все ваши достижения: мои достижения."
                         print(f"Выполнил команду {message_text.lower()} от {message.from_id} в чате {event.chat_id}")
                         self.send_message(event.chat_id,
                                           text=text)

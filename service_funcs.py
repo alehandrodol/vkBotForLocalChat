@@ -11,7 +11,9 @@ from models import Group, User, Achieves, UserAchieve
 from schemas import VkUser, VkMessage
 
 from pydantic import ValidationError
-from typing import Union
+from typing import Union, Optional
+
+from gifs_words import key_words
 
 
 def auth_handler():
@@ -85,6 +87,13 @@ def user_api():
         return
     user_vk = vk_user_session.get_api()
     return user_vk
+
+
+def find_word(message: VkMessage) -> Optional[int]:
+    for word in key_words.keys():
+        if word in message.text:
+            return key_words[word]
+    return None
 
 
 def add_new_column_in_json(ind: int):

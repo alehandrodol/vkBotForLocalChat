@@ -8,7 +8,7 @@ from vk_api.bot_longpoll import VkBotLongPoll, VkBotEventType, VkBotMessageEvent
 from vk_api.utils import get_random_id
 
 from service_funcs import my_random, get_group_record, get_user_record, make_vk_user_schema, \
-    make_vk_message_schema, get_achieve_record, get_user_achieve_record, user_api, commit
+    make_vk_message_schema, get_achieve_record, get_user_achieve_record, user_api, commit, find_word
 from vote_waiting import auto_end_vote
 
 from core.Base import Base
@@ -432,7 +432,7 @@ class Bot:
             attachment=f"photo-209871225_{photo_id}"
         )
 
-    def send_gif(self, event: VkBotMessageEvent) -> None:
+    def send_gif(self, event: VkBotMessageEvent, index: int = None) -> None:
         """
         This function for sending random gif from docs in vk group.
         System of getting almost like in func 'send_picture', but
@@ -441,7 +441,8 @@ class Bot:
         user_vk = user_api()
 
         list_of_gifs = user_vk.docs.get(type=3, owner_id=-209871225)
-        index = my_random(list_of_gifs['count'])
+        if index is None:
+            index = my_random(list_of_gifs['count'])
         gif_id = list_of_gifs['items'][index]['id']
         self.vk.messages.send(
             key=(self.params['key']),
@@ -728,6 +729,8 @@ class Bot:
             status = self.achieve_got(achieve_id=8, for_user=message.from_id, event=event, db=db)
         return status
 
+
+
     def listen(self):
         """Main func for listening events"""
         longpoll = VkBotLongPoll(self.vk_session, 209871225)
@@ -810,8 +813,18 @@ class Bot:
                                 suka_ach.is_available = False
                                 commit(db=session, inst=suka_ach)
                                 self.send_message(chat_id=event.chat_id,
-                                                  text="Это была секретная ачивка ;)")
+                                                  text="Ты конечно пидорас, что так часто юзаешь all, но ты нашёл секретную ачивку")
                         print(f"Выполнил команду {message_text.lower()} от {message.from_id} в чате {event.chat_id}")
+                    elif "@online" in message_text.lower():
+                        online_ach: Achieves = get_achieve_record(achieve_id=11, db=session)
+                        if online_ach.is_available:
+                            status = self.achieve_got(achieve_id=9, for_user=message.from_id, event=event, db=session)
+                            if status == 2:
+                                online_ach.is_available = False
+                                commit(db=session, inst=online_ach)
+                                self.send_message(chat_id=event.chat_id,
+                                                  text="Чё, сука, хотел обойти систему? -- ну ладно обошёл, получай свою ачивку...")
+
                     elif message_text.lower() in pictures or re.fullmatch(r"о+р+", message_text.lower()):
                         self.send_picture(event=event)
                         print(f"Выполнил команду {message_text.lower()} от {message.from_id} в чате {event.chat_id}")
@@ -860,14 +873,31 @@ class Bot:
                         self.send_message(event.chat_id,
                                           text=text)
                     else:
-                        fifteen_days_ach: Achieves = get_achieve_record(achieve_id=8, db=session)
-                        if fifteen_days_ach.is_available:
-                            status = self.fifteen_days(event=event, db=session)
-                            if status == 2:
-                                fifteen_days_ach.is_available = False
-                                commit(db=session, inst=fifteen_days_ach)
-                                self.send_message(chat_id=event.chat_id,
-                                                  text="Это была секретная ачивка ;)")
+                        ind = find_word(make_vk_message_schema(event.message))
+                        if ind is not None:
+                            self.send_gif(event=event, index=ind)
+                            gif_send: Achieves = get_achieve_record(achieve_id=10, db=session)
+                            if gif_send.is_available:
+                                status = self.achieve_got(achieve_id=10, for_user=message.from_id, event=event, db=session)
+                                if status == 2:
+                                    gif_send.is_available = False
+                                    commit(db=session, inst=gif_send)
+                                    self.send_message(chat_id=event.chat_id,
+                                                      text="Ты открыл новый функционал бота и "
+                                                           "заработал секретную ачивку, красава.\n"
+                                                           "Теперь вы можете с помощью определённых слов "
+                                                           "вызывать соответсвующую гифку."
+                                                           "Позови Лёху, он запостит полный список слов для гифок.")
+
+                        else:
+                            fifteen_days_ach: Achieves = get_achieve_record(achieve_id=8, db=session)
+                            if fifteen_days_ach.is_available:
+                                status = self.fifteen_days(event=event, db=session)
+                                if status == 2:
+                                    fifteen_days_ach.is_available = False
+                                    commit(db=session, inst=fifteen_days_ach)
+                                    self.send_message(chat_id=event.chat_id,
+                                                      text="Это была секретная ачивка ;)")
                     session.close()
 
 

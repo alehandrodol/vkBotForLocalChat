@@ -911,7 +911,8 @@ class Bot:
                                     commit(db=session, inst=fifteen_days_ach)
                                     self.send_message(chat_id=event.chat_id,
                                                       text="Это была секретная ачивка ;)")
-                    chat_last_message[event.chat_id] = message_text.lower()
+                    if len(message_text.lower()) >= 3:
+                        chat_last_message[event.chat_id] = message_text.lower()
                     session.close()
 
 

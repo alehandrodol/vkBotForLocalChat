@@ -827,7 +827,7 @@ class Bot:
                     elif "@online" in message_text.lower():
                         online_ach: Achieves = get_achieve_record(achieve_id=11, db=session)
                         if online_ach.is_available:
-                            status = self.achieve_got(achieve_id=9, for_user=message.from_id, event=event, db=session)
+                            status = self.achieve_got(achieve_id=11, for_user=message.from_id, event=event, db=session)
                             if status == 2:
                                 online_ach.is_available = False
                                 commit(db=session, inst=online_ach)

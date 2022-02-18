@@ -631,9 +631,7 @@ class Bot:
                 if (now.date() - record_user_achieve.last_date.date()).days > record_achieve.secs_to_reseting // 86400:
                     record_user_achieve.current_repeats = 0
             else:
-                if (now - record_user_achieve.last_date.astimezone(moscow_zone)).seconds > record_achieve.secs_to_reseting:
-                    print(now)
-                    print(record_user_achieve.last_date.astimezone(moscow_zone))
+                if (now - record_user_achieve.last_date.astimezone(pytz.utc)).seconds > record_achieve.secs_to_reseting:
                     record_user_achieve.current_repeats = 0
 
         record_user_achieve.current_repeats += 1

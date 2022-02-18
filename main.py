@@ -28,6 +28,8 @@ from json import loads, dump
 
 from subprocess import Popen, PIPE
 
+from DataBases.last_messages import bot_last_message, chat_last_message
+
 
 class Bot:
     def __init__(self):  # Bot start
@@ -373,14 +375,16 @@ class Bot:
         This func just configure message for vk method, it needs only
         chat_id and text for message, other params is taken from self
         """
+        msg_id = get_random_id()
         self.vk.messages.send(
             key=(self.params['key']),
             server=(self.params['server']),
             ts=(self.params['ts']),
-            random_id=get_random_id(),
+            random_id=msg_id,
             message=text,
             chat_id=chat_id
         )
+        bot_last_message[chat_id] = msg_id
 
     def suka_all(self, db: Session, event: VkBotMessageEvent) -> None:
         """
@@ -695,7 +699,8 @@ class Bot:
                 record_achieve.is_available = False
                 commit(db=db, inst=record_achieve)
                 self.send_message(chat_id=event.chat_id,
-                                  text="Это была секретная ачивка ;)")
+                                  text="Это была секретная ачивка ;)\n"
+                                       "Тебе нужно было тегнуть пидора дня в своём сообщении.")
 
     def my_achieves(self, event: VkBotMessageEvent, db: Session):
         message: VkMessage = make_vk_message_schema(event.message)
@@ -729,7 +734,9 @@ class Bot:
             status = self.achieve_got(achieve_id=8, for_user=message.from_id, event=event, db=db)
         return status
 
-
+    def delete_last_msg(self, event: VkBotMessageEvent):
+        msg_id = bot_last_message[event.chat_id]
+        self.vk.messages.delete(message_ids=msg_id, delete_for_all=1, group_id=event.chat_id)
 
     def listen(self):
         """Main func for listening events"""
@@ -796,7 +803,9 @@ class Bot:
                                 pers_stat_ach.is_available = False
                                 commit(db=session, inst=pers_stat_ach)
                                 self.send_message(chat_id=event.chat_id,
-                                                  text="Это была секретная ачивка ;)")
+                                                  text="Это была секретная ачивка ;)\n "
+                                                       "Идея тут в целом ни в чём просто, заюзать команду"
+                                                       "'моя статистика' 2 раза за час")
                         print(f"Выполнил команду {message_text.lower()} от {message.from_id} в чате {event.chat_id}")
                     elif message_text.lower() in fucked_stats:
                         self.statistics(db=session, event=event, option=2)
@@ -854,6 +863,8 @@ class Bot:
                         self.send_gif(event=event)
                     elif message_text.lower() == "мои достижения":
                         self.my_achieves(event=event, db=session)
+                    elif message_text.lower() == "удалить" and message.from_id == 221767748:
+                        self.delete_last_msg(event=event)
                     elif message_text.lower() == 'команды':
                         text = ""
                         text += f"Выбор пидора дня: {', '.join(randoms)};\n " \
@@ -888,7 +899,11 @@ class Bot:
                                                            "Теперь вы можете с помощью определённых слов "
                                                            "вызывать соответсвующую гифку."
                                                            "Позови Лёху, он запостит полный список слов для гифок.")
-
+                        elif chat_last_message[event.chat_id][::-1] == message_text.lower():
+                            self.achieve_got(achieve_id=12, for_user=message.from_id, event=event, db=session)
+                            self.send_message(chat_id=event.chat_id,
+                                              text=f"Это была секретная ачивка, "
+                                                   f"нужно было написать последнее сообщение наоборот ;)")
                         else:
                             fifteen_days_ach: Achieves = get_achieve_record(achieve_id=8, db=session)
                             if fifteen_days_ach.is_available:
@@ -898,6 +913,7 @@ class Bot:
                                     commit(db=session, inst=fifteen_days_ach)
                                     self.send_message(chat_id=event.chat_id,
                                                       text="Это была секретная ачивка ;)")
+                    chat_last_message[event.chat_id] = message_text.lower()
                     session.close()
 
 

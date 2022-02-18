@@ -734,9 +734,9 @@ class Bot:
             status = self.achieve_got(achieve_id=8, for_user=message.from_id, event=event, db=db)
         return status
 
-    def delete_last_msg(self, event: VkBotMessageEvent):
+    """def delete_last_msg(self, event: VkBotMessageEvent):
         msg_id = bot_last_message[event.chat_id]
-        self.vk.messages.delete(cmids=msg_id, delete_for_all=1, peer_id=2000000000+event.chat_id)
+        self.vk.messages.delete(cmids=msg_id, delete_for_all=1, peer_id=2000000000+event.chat_id)"""
 
     def listen(self):
         """Main func for listening events"""
@@ -863,8 +863,6 @@ class Bot:
                         self.send_gif(event=event)
                     elif message_text.lower() == "мои достижения":
                         self.my_achieves(event=event, db=session)
-                    elif message_text.lower() == "удалить" and message.from_id == 221767748:
-                        self.delete_last_msg(event=event)
                     elif message_text.lower() == 'команды':
                         text = ""
                         text += f"Выбор пидора дня: {', '.join(randoms)};\n " \

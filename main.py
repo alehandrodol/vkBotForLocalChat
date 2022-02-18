@@ -735,8 +735,8 @@ class Bot:
         return status
 
     def delete_last_msg(self, event: VkBotMessageEvent):
-        msg_id = bot_last_message[event.chat_id]
-        self.vk.messages.delete(message_ids=msg_id, delete_for_all=1, group_id=event.chat_id)
+        msg_id: VkMessage = bot_last_message[event.chat_id]
+        self.vk.messages.delete(message_ids=msg_id.id, delete_for_all=1, group_id=209871225, peer_id=msg_id.peer_id)
 
     def listen(self):
         """Main func for listening events"""

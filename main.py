@@ -33,7 +33,7 @@ from DataBases.last_messages import bot_last_message, chat_last_message
 
 class Bot:
     def __init__(self):  # Bot start
-        # Base.metadata.drop_all(bind=engine)
+        Base.metadata.drop_all(bind=engine)
         # Tables creation
         Base.metadata.create_all(bind=engine)
 

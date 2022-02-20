@@ -91,7 +91,7 @@ def user_api():
 
 def find_word(message: VkMessage) -> Optional[int]:
     for word in key_words.keys():
-        if word in message.text:
+        if word in message.text.lower():
             return key_words[word]
     return None
 

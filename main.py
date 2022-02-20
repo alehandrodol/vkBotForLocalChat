@@ -448,7 +448,7 @@ class Bot:
             list_of_gifs = user_vk.docs.get(type=3, owner_id=-209871225)
             index = my_random(list_of_gifs['count'])
             gif_id = list_of_gifs['items'][index]['id']
-        
+
         self.vk.messages.send(
             key=(self.params['key']),
             server=(self.params['server']),
@@ -886,7 +886,7 @@ class Bot:
                     else:
                         ind = find_word(make_vk_message_schema(event.message))
                         if ind is not None:
-                            self.send_gif(event=event, index=ind)
+                            self.send_gif(event=event, gif_id=ind)
                             gif_send: Achieves = get_achieve_record(achieve_id=10, db=session)
                             if gif_send.is_available:
                                 status = self.achieve_got(achieve_id=10, for_user=message.from_id, event=event, db=session)

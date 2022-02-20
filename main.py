@@ -899,10 +899,16 @@ class Bot:
                                                            "вызывать соответсвующую гифку."
                                                            "Позови Лёху, он запостит полный список слов для гифок.")
                         elif chat_last_message[event.chat_id][::-1] == message_text.lower():
-                            self.achieve_got(achieve_id=12, for_user=message.from_id, event=event, db=session)
-                            self.send_message(chat_id=event.chat_id,
-                                              text=f"Это была секретная ачивка, "
-                                                   f"нужно было написать последнее сообщение наоборот ;)")
+                            mirror: Achieves = get_achieve_record(achieve_id=12, db=session)
+                            if mirror.is_available:
+                                status = self.achieve_got(achieve_id=12, for_user=message.from_id,
+                                                          event=event, db=session)
+                                if status == 2:
+                                    mirror.is_available = False
+                                    commit(db=session, inst=mirror)
+                                    self.send_message(chat_id=event.chat_id,
+                                                      text=f"Это была секретная ачивка, "
+                                                           f"нужно было написать последнее сообщение наоборот ;)")
                         else:
                             fifteen_days_ach: Achieves = get_achieve_record(achieve_id=8, db=session)
                             if fifteen_days_ach.is_available:

@@ -11,6 +11,6 @@
     [9, "suka all", 75, true, 5, null, 86400],
     [10, "secret gifs", 25, true, 1, null, null],
     [11, "online", 50, true, 3, null, 100],
-    [12, "mirror", 75, true, 1, null, null]
+    [12, "mirror", 75, false, 1, null, null]
   ]
 }

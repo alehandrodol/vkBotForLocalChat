@@ -436,7 +436,7 @@ class Bot:
             attachment=f"photo-209871225_{photo_id}"
         )
 
-    def send_gif(self, event: VkBotMessageEvent, index: int = None) -> None:
+    def send_gif(self, event: VkBotMessageEvent, gif_id: int = None) -> None:
         """
         This function for sending random gif from docs in vk group.
         System of getting almost like in func 'send_picture', but
@@ -444,10 +444,11 @@ class Bot:
         """
         user_vk = user_api()
 
-        list_of_gifs = user_vk.docs.get(type=3, owner_id=-209871225)
-        if index is None:
+        if gif_id is None:
+            list_of_gifs = user_vk.docs.get(type=3, owner_id=-209871225)
             index = my_random(list_of_gifs['count'])
-        gif_id = list_of_gifs['items'][index]['id']
+            gif_id = list_of_gifs['items'][index]['id']
+        
         self.vk.messages.send(
             key=(self.params['key']),
             server=(self.params['server']),

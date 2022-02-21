@@ -7,7 +7,7 @@ from datetime import datetime
 
 from sqlalchemy.orm import Session
 
-from models import Group, User, Achieves, UserAchieve
+from models import Group, User, Achieves, UserAchieve, GroupAchieve
 from schemas import VkUser, VkMessage
 
 from pydantic import ValidationError
@@ -22,7 +22,7 @@ def auth_handler():
     return key, remember_device
 
 
-def commit(db: Session, inst: Union[Group, User, Achieves, UserAchieve]):
+def commit(db: Session, inst: Union[Group, User, Achieves, UserAchieve, GroupAchieve]):
     """Method for pushing records into DB"""
     print("Загружаю в базу вот такую строчку:", str(inst))
     db.add(inst)
@@ -54,6 +54,12 @@ def get_user_achieve_record(user_id: int, achieve_id: int, chat_id: int, db: Ses
                                                                     UserAchieve.achieve_id == achieve_id,
                                                                     UserAchieve.chat_id == chat_id).first()
     return record_user_achieve
+
+
+def get_group_achieve_record(group_id: int, achieve_id: int, db: Session) -> GroupAchieve:
+    record_group_achieve: UserAchieve = db.query(UserAchieve).filter(GroupAchieve.group_id == group_id,
+                                                                     GroupAchieve.achieve_id == achieve_id).first()
+    return record_group_achieve
 
 
 def make_vk_user_schema(user: dict) -> VkUser:

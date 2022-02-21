@@ -7,14 +7,14 @@ import vk_api
 from vk_api.bot_longpoll import VkBotLongPoll, VkBotEventType, VkBotMessageEvent
 from vk_api.utils import get_random_id
 
-from service_funcs import my_random, get_group_record, get_user_record, make_vk_user_schema, \
+from service_funcs import my_random, get_group_record, get_user_record, make_vk_user_schema, get_group_achieve_record, \
     make_vk_message_schema, get_achieve_record, get_user_achieve_record, user_api, commit, find_word
 from vote_waiting import auto_end_vote
 
 from core.Base import Base
 from core.database import engine, get_db
 
-from models import Group, User, Achieves, UserAchieve
+from models import Group, User, Achieves, UserAchieve, GroupAchieve
 from schemas import VkUser, VkMessage
 
 from sqlalchemy.orm import Session
@@ -100,10 +100,9 @@ class Bot:
                         id=line[0],
                         name=line[1],
                         points=line[2],
-                        is_available=line[3],
-                        needed_repeats=line[4],
-                        day_count_reachieve=line[5],
-                        secs_to_reseting=line[6],
+                        needed_repeats=line[3],
+                        day_count_reachieve=line[4],
+                        secs_to_reseting=line[5],
                     )
                     commit(db=db, inst=record_achieve)
             db.close()
@@ -126,6 +125,20 @@ class Bot:
                         got_times=line[7]
                     )
                     commit(db=db, inst=record_user_achieve)
+            db.close()
+        with open("./DataBases/groups_data.json", 'r', encoding="utf8") as f:
+            db: Session = get_db()
+            read = f.read()
+            data_list = loads(read)['values']
+            for line in data_list:
+                record_group_achieve: GroupAchieve = get_group_achieve_record(line[0], line[1], db)
+                if record_group_achieve is None:
+                    record_group_achieve = GroupAchieve(
+                        group_id=line[0],
+                        achieve_id=line[1],
+                        is_available=line[2]
+                    )
+                    commit(db=db, inst=record_group_achieve)
             db.close()
 
     def get_random_user(self, users: list[dict]) -> tuple[list[dict], VkUser]:
@@ -211,6 +224,16 @@ class Bot:
             got_times=0
         )
         commit(db, record)
+        return record
+
+    def make_record_in_groups_achieve(self, event: VkBotMessageEvent, db: Session,
+                                      achieve_id: int, val: bool) -> GroupAchieve:
+        record: GroupAchieve = GroupAchieve(
+            group_id=event.chat_id,
+            achieve_id=achieve_id,
+            is_available=val,
+        )
+        commit(db=db, inst=record)
         return record
 
     def random_pdr(self, db: Session, event: VkBotMessageEvent) -> None:
@@ -697,9 +720,14 @@ class Bot:
         if "id" + str(record_group.today_pdr) in message.text.lower():
             is_got = self.achieve_got(achieve_id=4, for_user=message.from_id, event=event, db=db)
             if is_got > 0:
-                record_achieve: Achieves = get_achieve_record(achieve_id=4, db=db)
-                record_achieve.is_available = False
-                commit(db=db, inst=record_achieve)
+                record_group_achieve: GroupAchieve = get_group_achieve_record(group_id=event.chat_id,
+                                                                              achieve_id=4, db=db)
+                if record_group_achieve is None:
+                    record_group_achieve = self.make_record_in_groups_achieve(event=event, db=db,
+                                                                              achieve_id=4, val=False)
+                else:
+                    record_group_achieve.is_available = False
+                commit(db=db, inst=record_group_achieve)
                 self.send_message(chat_id=event.chat_id,
                                   text="Это была секретная ачивка ;)\n"
                                        "Тебе нужно было тегнуть пидора дня в своём сообщении.")
@@ -798,12 +826,17 @@ class Bot:
                         print(f"Выполнил команду {message_text.lower()} от {message.from_id} в чате {event.chat_id}")
                     elif message_text.lower() == "моя статистика":
                         self.personal_stats(event=event, db=session)
-                        pers_stat_ach: Achieves = get_achieve_record(achieve_id=3, db=session)
-                        if pers_stat_ach.is_available:
+                        pers_stat_group_ach: GroupAchieve = get_group_achieve_record(group_id=event.chat_id,
+                                                                                     achieve_id=3, db=session)
+                        if pers_stat_group_ach.is_available:
                             status = self.achieve_got(achieve_id=3, for_user=message.from_id, event=event, db=session)
                             if status == 2:
-                                pers_stat_ach.is_available = False
-                                commit(db=session, inst=pers_stat_ach)
+                                if pers_stat_group_ach is None:
+                                    pers_stat_group_ach = self.make_record_in_groups_achieve(event=event, db=session,
+                                                                                             achieve_id=3, val=False)
+                                else:
+                                    pers_stat_group_ach.is_available = False
+                                commit(db=session, inst=pers_stat_group_ach)
                                 self.send_message(chat_id=event.chat_id,
                                                   text="Это была секретная ачивка ;)\n "
                                                        "Идея тут в целом ни в чём просто, заюзать команду"
@@ -816,23 +849,34 @@ class Bot:
                         self.statistics(db=session, event=event, option=3)
                         print(f"Выполнил команду {message_text.lower()} от {message.from_id} в чате {event.chat_id}")
                     elif '@all' in message_text.lower():
-                        suka_ach: Achieves = get_achieve_record(achieve_id=9, db=session)
+                        suka_group_ach: GroupAchieve = get_group_achieve_record(group_id=event.chat_id,
+                                                                                achieve_id=9, db=session)
                         self.suka_all(session, event)
-                        if suka_ach.is_available:
+                        if suka_group_ach.is_available:
                             status = self.achieve_got(achieve_id=9, for_user=message.from_id, event=event, db=session)
                             if status == 2:
-                                suka_ach.is_available = False
-                                commit(db=session, inst=suka_ach)
+                                if suka_group_ach is None:
+                                    suka_group_ach = self.make_record_in_groups_achieve(event=event, db=session,
+                                                                                        achieve_id=9, val=False)
+                                else:
+                                    suka_group_ach.is_available = False
+                                commit(db=session, inst=suka_group_ach)
                                 self.send_message(chat_id=event.chat_id,
-                                                  text="Ты конечно пидорас, что так часто юзаешь all, но ты нашёл секретную ачивку")
+                                                  text="Ты конечно пидорас, что так часто юзаешь all, "
+                                                       "но ты нашёл секретную ачивку")
                         print(f"Выполнил команду {message_text.lower()} от {message.from_id} в чате {event.chat_id}")
                     elif "@online" in message_text.lower():
-                        online_ach: Achieves = get_achieve_record(achieve_id=11, db=session)
-                        if online_ach.is_available:
+                        online_group_ach: GroupAchieve = get_group_achieve_record(group_id=event.chat_id,
+                                                                                  achieve_id=11, db=session)
+                        if online_group_ach.is_available:
                             status = self.achieve_got(achieve_id=11, for_user=message.from_id, event=event, db=session)
                             if status == 2:
-                                online_ach.is_available = False
-                                commit(db=session, inst=online_ach)
+                                if online_group_ach is None:
+                                    online_group_ach = self.make_record_in_groups_achieve(event=event, db=session,
+                                                                                          achieve_id=11, val=False)
+                                else:
+                                    online_group_ach.is_available = False
+                                commit(db=session, inst=online_group_ach)
                                 self.send_message(chat_id=event.chat_id,
                                                   text="Чё, сука, хотел обойти систему? -- ну ладно обошёл, получай свою ачивку...")
 
@@ -858,8 +902,9 @@ class Bot:
                         self.vote_check(db=session, event=event)
                         print(f"Выполнил команду {message_text.lower()} от {message.from_id} в чате {event.chat_id}")
                     elif re.search(r'\[id[\d]{8,10}\|.*]', message_text.lower()):
-                        tag_ach: Achieves = get_achieve_record(achieve_id=4, db=session)
-                        if tag_ach.is_available:
+                        tag_group_ach: GroupAchieve = get_group_achieve_record(group_id=event.chat_id,
+                                                                               achieve_id=4, db=session)
+                        if tag_group_ach.is_available:
                             self.check_tag(event=event, db=session)
                     elif message_text.lower() in gifs:
                         self.send_gif(event=event)
@@ -887,12 +932,17 @@ class Bot:
                         ind = find_word(make_vk_message_schema(event.message))
                         if ind is not None:
                             self.send_gif(event=event, gif_id=ind)
-                            gif_send: Achieves = get_achieve_record(achieve_id=10, db=session)
-                            if gif_send.is_available:
+                            gif_send_group_ach: GroupAchieve = get_group_achieve_record(group_id=event.chat_id,
+                                                                                        achieve_id=10, db=session)
+                            if gif_send_group_ach.is_available:
                                 status = self.achieve_got(achieve_id=10, for_user=message.from_id, event=event, db=session)
                                 if status == 2:
-                                    gif_send.is_available = False
-                                    commit(db=session, inst=gif_send)
+                                    if gif_send_group_ach is None:
+                                        gif_send_group_ach = self.make_record_in_groups_achieve(event=event, db=session,
+                                                                                                achieve_id=10, val=False)
+                                    else:
+                                        gif_send_group_ach.is_available = False
+                                    commit(db=session, inst=gif_send_group_ach)
                                     self.send_message(chat_id=event.chat_id,
                                                       text="Ты открыл новый функционал бота и "
                                                            "заработал секретную ачивку, красава.\n"
@@ -900,23 +950,33 @@ class Bot:
                                                            "вызывать соответсвующую гифку."
                                                            "Позови Лёху, он запостит полный список слов для гифок.")
                         elif chat_last_message[event.chat_id][::-1] == message_text.lower():
-                            mirror: Achieves = get_achieve_record(achieve_id=12, db=session)
-                            if mirror.is_available:
+                            mirror_group_ach: GroupAchieve = get_group_achieve_record(group_id=event.chat_id,
+                                                                                      achieve_id=12, db=session)
+                            if mirror_group_ach.is_available:
                                 status = self.achieve_got(achieve_id=12, for_user=message.from_id,
                                                           event=event, db=session)
                                 if status == 2:
-                                    mirror.is_available = False
-                                    commit(db=session, inst=mirror)
+                                    if mirror_group_ach is None:
+                                        mirror_group_ach = self.make_record_in_groups_achieve(event=event, db=session,
+                                                                                              achieve_id=12, val=False)
+                                    else:
+                                        mirror_group_ach.is_available = False
+                                    commit(db=session, inst=mirror_group_ach)
                                     self.send_message(chat_id=event.chat_id,
                                                       text=f"Это была секретная ачивка, "
                                                            f"нужно было написать последнее сообщение наоборот ;)")
                         else:
-                            fifteen_days_ach: Achieves = get_achieve_record(achieve_id=8, db=session)
-                            if fifteen_days_ach.is_available:
+                            fifteen_days_group_ach: GroupAchieve = get_group_achieve_record(group_id=event.chat_id,
+                                                                                            achieve_id=8, db=session)
+                            if fifteen_days_group_ach.is_available:
                                 status = self.fifteen_days(event=event, db=session)
                                 if status == 2:
-                                    fifteen_days_ach.is_available = False
-                                    commit(db=session, inst=fifteen_days_ach)
+                                    if fifteen_days_group_ach is None:
+                                        fifteen_days_group_ach = self.make_record_in_groups_achieve(event=event, db=session,
+                                                                                                    achieve_id=8, val=False)
+                                    else:
+                                        fifteen_days_group_ach.is_available = False
+                                    commit(db=session, inst=fifteen_days_group_ach)
                                     self.send_message(chat_id=event.chat_id,
                                                       text="Это была секретная ачивка ;)")
                     if len(message_text.lower()) >= 3:

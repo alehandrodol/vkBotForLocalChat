@@ -126,7 +126,7 @@ class Bot:
                     )
                     commit(db=db, inst=record_user_achieve)
             db.close()
-        with open("./DataBases/groups_data.json", 'r', encoding="utf8") as f:
+        with open("./DataBases/groups_achieves_data.json", 'r', encoding="utf8") as f:
             db: Session = get_db()
             read = f.read()
             data_list = loads(read)['values']

@@ -838,8 +838,8 @@ class Bot:
                                 commit(db=session, inst=pers_stat_group_ach)
                                 self.send_message(chat_id=event.chat_id,
                                                   text="Это была секретная ачивка ;)\n "
-                                                       "Идея тут в целом ни в чём просто, заюзать команду"
-                                                       "'моя статистика' 2 раза за час")
+                                                       "Я смотрю ты очень самовлюблённый :)\n"
+                                                       "Для выполнения надо было юзнуть 'моя статистика' 2 раза за час")
                         print(f"Выполнил команду {message_text.lower()} от {message.from_id} в чате {event.chat_id}")
                     elif message_text.lower() in fucked_stats:
                         self.statistics(db=session, event=event, option=2)
@@ -972,7 +972,10 @@ class Bot:
                                     fifteen_days_group_ach.is_available = False
                                     commit(db=session, inst=fifteen_days_group_ach)
                                     self.send_message(chat_id=event.chat_id,
-                                                      text="Это была секретная ачивка ;)")
+                                                      text="Это была секретная ачивка ;)\n"
+                                                           "Ты настоящий пользователь беседы шашлындос, для выполнения"
+                                                           "данной ачивки нужно было всего лишь писать что-либо в нашу"
+                                                           "беседу на протяжении 15 дней подряд")
                     if len(message_text.lower()) >= 3:
                         chat_last_message[event.chat_id] = message_text.lower()
                     session.close()

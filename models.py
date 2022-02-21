@@ -100,5 +100,5 @@ class GroupAchieve(Base):
     def __str__(self) -> str:
         return f"\n------------------------------------------------------------------------------------------------\n" \
                f"Instance from table groups_achieves:\n" \
-               f"groups_id: {self.group_id}, achieve_id: {self.achieve_id}, is_available: {self.is_available}" \
+               f"groups_id: {self.group_id}, achieve_id: {self.achieve_id}, is_available: {self.is_available}\n" \
                f"------------------------------------------------------------------------------------------------\n"

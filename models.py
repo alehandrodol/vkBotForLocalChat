@@ -63,7 +63,7 @@ class Achieves(Base):
     def __str__(self) -> str:
         return f"--------------------------------------------------------------------------------------------------\n" \
                f"Instance from table achieves:\n" \
-               f"id: {self.id}, name: {self.name}, points: {self.points}, is_available: {self.is_available},\n" \
+               f"id: {self.id}, name: {self.name}, points: {self.points}, "\
                f"needed_repeats: {self.needed_repeats}, day_count_reachieve: {self.day_count_reachieve}," \
                f"secs_to_reseting: {self.secs_to_reseting}.\n" \
                f"--------------------------------------------------------------------------------------------------\n"

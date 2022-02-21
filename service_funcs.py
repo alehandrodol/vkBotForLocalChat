@@ -57,8 +57,8 @@ def get_user_achieve_record(user_id: int, achieve_id: int, chat_id: int, db: Ses
 
 
 def get_group_achieve_record(group_id: int, achieve_id: int, db: Session) -> GroupAchieve:
-    record_group_achieve: UserAchieve = db.query(UserAchieve).filter(GroupAchieve.group_id == group_id,
-                                                                     GroupAchieve.achieve_id == achieve_id).first()
+    record_group_achieve: GroupAchieve = db.query(GroupAchieve).filter(GroupAchieve.group_id == group_id,
+                                                                       GroupAchieve.achieve_id == achieve_id).first()
     return record_group_achieve
 
 

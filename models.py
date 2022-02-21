@@ -93,8 +93,8 @@ class UserAchieve(Base):
 class GroupAchieve(Base):
     __tablename__ = "group_achieve"
 
-    group_id = Column(String, primary_key=True)
-    achieve_id = Column(String, primary_key=True, unique=False)
+    group_id = Column(Integer, primary_key=True)
+    achieve_id = Column(Integer, primary_key=True, unique=False)
     is_available = Column(Boolean)
 
     def __str__(self) -> str:

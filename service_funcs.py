@@ -102,6 +102,13 @@ def find_word(message: VkMessage) -> Optional[int]:
     return None
 
 
+def from_ghbdtn(text):
+    layout = dict(zip(map(ord, '''qwertyuiop[]asdfghjkl;'zxcvbnm,./`QWERTYUIOP{}ASDFGHJKL:"ZXCVBNM<>?~'''),
+                               '''йцукенгшщзхъфывапролджэячсмитьбю.ёЙЦУКЕНГШЩЗХЪФЫВАПРОЛДЖЭЯЧСМИТЬБЮ,Ё'''))
+
+    return text.translate(layout)
+
+
 def add_new_column_in_json(ind: int):
     res = ""
     with open("DataBases/users_data.json", "r") as f:

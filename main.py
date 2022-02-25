@@ -8,7 +8,7 @@ from vk_api.bot_longpoll import VkBotLongPoll, VkBotEventType, VkBotMessageEvent
 from vk_api.utils import get_random_id
 
 from service_funcs import my_random, get_group_record, get_user_record, make_vk_user_schema, get_group_achieve_record, \
-    make_vk_message_schema, get_achieve_record, get_user_achieve_record, user_api, commit, find_word
+    make_vk_message_schema, get_achieve_record, get_user_achieve_record, user_api, commit, find_word, from_ghbdtn
 from vote_waiting import auto_end_vote
 
 from core.Base import Base
@@ -764,6 +764,11 @@ class Bot:
             status = self.achieve_got(achieve_id=8, for_user=message.from_id, event=event, db=db)
         return status
 
+    def change_keyboard(self, event: VkBotMessageEvent):
+        message: VkMessage = make_vk_message_schema(event.message)
+        text = from_ghbdtn(message.reply_message["text"])
+        self.send_message(chat_id=event.chat_id, text=text)
+
     """def delete_last_msg(self, event: VkBotMessageEvent):
         msg_id = bot_last_message[event.chat_id]
         self.vk.messages.delete(cmids=msg_id, delete_for_all=1, peer_id=2000000000+event.chat_id)"""
@@ -907,6 +912,8 @@ class Bot:
                         self.send_gif(event=event)
                     elif message_text.lower() == "мои достижения":
                         self.my_achieves(event=event, db=session)
+                    elif message_text.lower() == "переведи":
+                        self.change_keyboard(event=event)
                     elif message_text.lower() == 'команды':
                         text = ""
                         text += f"Выбор пидора дня: {', '.join(randoms)};\n " \

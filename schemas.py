@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Dict
 
 
 class VkUser(BaseModel):
@@ -27,4 +27,5 @@ class VkMessage(BaseModel):
     from_id: int
     text: str
     random_id: int
+    reply_message: Dict
 

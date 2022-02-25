@@ -912,7 +912,7 @@ class Bot:
                         self.send_gif(event=event)
                     elif message_text.lower() == "мои достижения":
                         self.my_achieves(event=event, db=session)
-                    elif message_text.lower() == "переведи":
+                    elif message_text.lower() in ["переведи", "gthtdtlb"]:
                         self.change_keyboard(event=event)
                     elif message_text.lower() == 'команды':
                         text = ""

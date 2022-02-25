@@ -27,5 +27,5 @@ class VkMessage(BaseModel):
     from_id: int
     text: str
     random_id: int
-    reply_message: Dict
+    reply_message: Optional[Dict]
 

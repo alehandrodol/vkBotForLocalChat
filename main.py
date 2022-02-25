@@ -766,8 +766,11 @@ class Bot:
 
     def change_keyboard(self, event: VkBotMessageEvent):
         message: VkMessage = make_vk_message_schema(event.message)
-        text = from_ghbdtn(message.reply_message["text"])
-        self.send_message(chat_id=event.chat_id, text=text)
+        if message.reply_message is not None:
+            text = from_ghbdtn(message.reply_message["text"])
+            self.send_message(chat_id=event.chat_id, text=text)
+        else:
+            self.send_message(chat_id=event.chat_id, text="Нечего переводить")
 
     """def delete_last_msg(self, event: VkBotMessageEvent):
         msg_id = bot_last_message[event.chat_id]

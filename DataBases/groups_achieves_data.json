@@ -1,6 +1,1 @@
-{
-  "values": [
-    [2, 12, false],
-    [2, 10, false]
-  ]
-}
+{"title":"test","values":[[2,12,false],[2,10,false],[1,8,true],[1,12,true],[1,10,false],[2,8,false],[2,9,true],[2,3,false]],"fields":["group_id","achieve_id","is_available"],"types":[23,23,16],"type_names":["integer","integer","boolean"],"started_at":"2022-02-26 09:51:36 +0000","finished_at":"2022-02-26 09:51:37 +0000","checksum":"bdfbcde4b6e1a2b6fd04d2f475ac8485"}

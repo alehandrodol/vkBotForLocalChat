@@ -909,6 +909,10 @@ class Bot:
                     elif re.search(r'\[id[\d]{8,10}\|.*]', message_text.lower()):
                         tag_group_ach: GroupAchieve = get_group_achieve_record(group_id=event.chat_id,
                                                                                achieve_id=4, db=session)
+
+                        if tag_group_ach is None:
+                            tag_group_ach = self.make_record_in_groups_achieve(event=event, db=session,
+                                                                               achieve_id=4, val=True)
                         if tag_group_ach.is_available:
                             self.check_tag(event=event, db=session)
                     elif message_text.lower() in gifs:

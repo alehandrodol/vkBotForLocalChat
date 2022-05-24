@@ -1,1 +1,9 @@
-{"title":"test","values":[[1,"Тестовая беседа",84860221,221767748,"2022-02-18",221767748,2022,0,"2022-02-03 17:16:38.804325",0,221767748],[2,"Шашлындос",421155178,146549595,"2022-02-26",452417384,2022,0,"2022-02-24 23:54:34.524852",3,297691761]],"fields":["id","name","today_pdr","who_is_fucked","pdr_date","year_pdr","year_pdr_num","active_vote","start_time","votes_counter","for_user_vote"],"types":[23,1043,23,23,1082,23,23,23,1114,23,23],"type_names":["integer","text","integer","integer","date","integer","integer","integer","timestamp without time zone","integer","integer"],"started_at":"2022-02-26 09:51:03 +0000","finished_at":"2022-02-26 09:51:03 +0000","checksum":"51cc74f1cfc12a8568b53322447a70d6"}
+{"title":"test",
+  "values":[[1,"Тестовая беседа",84860221,221767748,"2022-02-18",221767748,2022,0,"2022-02-03 17:16:38.804325",0,221767748],[2,"Шашлындос",421155178,146549595,"2022-02-26",452417384,2022,0,"2022-02-24 23:54:34.524852",3,297691761]],
+  "fields":["id","name","today_pdr","who_is_fucked","pdr_date","year_pdr","year_pdr_num","active_vote","start_time","votes_counter","for_user_vote"],
+  "types":[23,1043,23,23,1082,23,23,23,1114,23,23],
+  "type_names":["integer","text","integer","integer","date","integer","integer","integer","timestamp without time zone","integer","integer"],
+  "started_at":"2022-02-26 09:51:03 +0000",
+  "finished_at":"2022-02-26 09:51:03 +0000",
+  "checksum":"51cc74f1cfc12a8568b53322447a70d6"
+}
